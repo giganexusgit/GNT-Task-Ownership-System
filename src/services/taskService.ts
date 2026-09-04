@@ -113,8 +113,36 @@ class TaskService {
     if (!data.nextAction.trim()) return { success: false, message: 'A clear Next Action is required.' };
 
     const projects = storageService.getProjects();
-    const project = projects.find((p) => p.id === data.projectId);
-    if (!project) return { success: false, message: 'Selected project does not exist.' };
+    const cleanProjectInput = (data.projectId || '').trim();
+    let project = projects.find((p) => p.id === cleanProjectInput);
+    if (!project) {
+      project = projects.find(
+        (p) =>
+          p.projectName.toLowerCase() === cleanProjectInput.toLowerCase() ||
+          `${p.projectName} (${p.clientName})`.toLowerCase() === cleanProjectInput.toLowerCase()
+      );
+    }
+    if (!project && cleanProjectInput) {
+      let pName = cleanProjectInput;
+      let cName = 'Internal Ops';
+      const match = cleanProjectInput.match(/^(.*?)\s*\((.*?)\)$/);
+      if (match) {
+        pName = match[1].trim();
+        cName = match[2].trim();
+      }
+      project = {
+        id: `proj-${Date.now()}`,
+        projectName: pName,
+        clientName: cName,
+        status: 'ACTIVE',
+        description: `Project for task: ${data.title.trim()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      storageService.saveProject(project);
+    }
+
+    // if (!project) return { success: false, message: 'Project or Client is required.' };
 
     const users = storageService.getUsers();
     const assignedUser = users.find((u) => u.id === data.assignedEmployeeId);
@@ -350,10 +378,39 @@ class TaskService {
     let newClientName = currentTask.clientName;
     if (updates.projectId && updates.projectId !== currentTask.projectId) {
       const projects = storageService.getProjects();
-      const proj = projects.find((p) => p.id === updates.projectId);
-      if (!proj) return { success: false, message: 'Selected project does not exist.' };
-      newProjectName = proj.projectName;
-      newClientName = proj.clientName;
+      const cleanInput = updates.projectId.trim();
+      let proj = projects.find((p) => p.id === cleanInput);
+      if (!proj) {
+        proj = projects.find(
+          (p) =>
+            p.projectName.toLowerCase() === cleanInput.toLowerCase() ||
+            `${p.projectName} (${p.clientName})`.toLowerCase() === cleanInput.toLowerCase()
+        );
+      }
+      if (!proj && cleanInput) {
+        let pName = cleanInput;
+        let cName = 'Internal Ops';
+        const match = cleanInput.match(/^(.*?)\s*\((.*?)\)$/);
+        if (match) {
+          pName = match[1].trim();
+          cName = match[2].trim();
+        }
+        proj = {
+          id: `proj-${Date.now()}`,
+          projectName: pName,
+          clientName: cName,
+          status: 'ACTIVE',
+          description: `Project for task: ${currentTask.title}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        storageService.saveProject(proj);
+      }
+      if (proj) {
+        newProjectName = proj.projectName;
+        newClientName = proj.clientName;
+        updates.projectId = proj.id;
+      }
     }
 
     // Status / Done handling

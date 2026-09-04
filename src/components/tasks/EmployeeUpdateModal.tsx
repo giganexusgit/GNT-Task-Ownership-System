@@ -222,7 +222,7 @@ export const EmployeeUpdateModal: React.FC<EmployeeUpdateModalProps> = ({
           {/* Next Action (Mandatory) */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
             <label htmlFor="update-next-action-input" className="block font-bold text-blue-950">
-              Immediate Next Action <span className="text-rose-500">*</span>
+              Immediate Next Action
             </label>
             <p className="text-[11px] text-blue-700">
               Always state the clear next step to be taken.
@@ -230,7 +230,7 @@ export const EmployeeUpdateModal: React.FC<EmployeeUpdateModalProps> = ({
             <input
               id="update-next-action-input"
               type="text"
-              required
+
               placeholder="e.g. Run migration test in staging and verify logs"
               value={nextAction}
               onChange={(e) => setNextAction(e.target.value)}

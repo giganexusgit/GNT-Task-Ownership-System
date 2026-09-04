@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Task } from '../../types';
-import { TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { TrendingUp, CheckCircle, Clock, ShieldAlert, Target, Award } from 'lucide-react';
 
 interface CompletionTrendCardProps {
   tasks: Task[];
@@ -11,10 +11,6 @@ export const CompletionTrendCard: React.FC<CompletionTrendCardProps> = ({ tasks 
   const todayStr = '2026-09-04';
 
   // Derive weekly milestones for September 2026
-  // Week 1: Sep 1-7
-  // Week 2: Sep 8-14
-  // Week 3: Sep 15-21
-  // Week 4: Sep 22-30
   const weeks = [
     { label: 'W1 (Sep 1–7)', start: '2026-09-01', end: '2026-09-07' },
     { label: 'W2 (Sep 8–14)', start: '2026-09-08', end: '2026-09-14' },
@@ -40,91 +36,138 @@ export const CompletionTrendCard: React.FC<CompletionTrendCardProps> = ({ tasks 
   });
 
   const totalDone = tasks.filter((t) => t.status === 'DONE').length;
+  const activeTasks = tasks.filter((t) => t.status !== 'DONE');
+  const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
+  const reviewTasks = tasks.filter((t) => t.status === 'REVIEW').length;
+  const blockedTasks = tasks.filter((t) => t.status === 'BLOCKED').length;
   const overallRate = tasks.length > 0 ? Math.round((totalDone / tasks.length) * 100) : 0;
+
+  // On-time delivery rate among completed
+  const onTimeDone = tasks.filter((t) => {
+    if (t.status !== 'DONE') return false;
+    const comp = t.completedAt ? t.completedAt.split('T')[0] : t.dueDate;
+    return comp <= t.dueDate;
+  }).length;
+  const onTimeRate = totalDone > 0 ? Math.round((onTimeDone / totalDone) * 100) : 100;
 
   return (
     <div
       id="card-completion-trend"
-      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col"
+      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between"
     >
-      {/* Header - Consistent with TasksAttentionCard */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
-            <TrendingUp className="w-4 h-4 stroke-[2]" />
-          </span>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Task Completion Velocity</h3>
-            <p className="text-xs text-slate-500">Real-time delivery progress against September 2026 deadlines</p>
+      {/* Header */}
+      <div>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+              <TrendingUp className="w-4 h-4 stroke-[2]" />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Task Completion Velocity</h3>
+              <p className="text-xs text-slate-500">Real-time delivery progress against September 2026 deadlines</p>
+            </div>
+          </div>
+
+          <div className="text-right flex items-baseline gap-1.5">
+            <span className="text-lg font-extrabold text-slate-900">{overallRate}%</span>
+            <span className="text-[10px] text-slate-400 uppercase font-semibold">Delivery</span>
           </div>
         </div>
 
-        <div className="text-right flex items-baseline gap-1.5">
-          <span className="text-lg font-extrabold text-slate-900">{overallRate}%</span>
-          <span className="text-[10px] text-slate-400 uppercase font-semibold">Delivery</span>
+        {/* Visual Chart Bars */}
+        <div className="mt-3.5 space-y-2">
+          {trendData.map((d, index) => {
+            const isSelected = selectedPoint === index;
+            return (
+              <div
+                key={d.label}
+                onMouseEnter={() => setSelectedPoint(index)}
+                onMouseLeave={() => setSelectedPoint(null)}
+                className={`p-2 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'bg-blue-50/60 border-blue-200 shadow-2xs'
+                    : d.isCurrent
+                    ? 'bg-slate-50/80 border-blue-200/80 ring-1 ring-blue-100'
+                    : 'bg-slate-50/40 border-slate-100 hover:border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-slate-800 text-[11px]">{d.label}</span>
+                    {d.isCurrent && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 uppercase tracking-wide">
+                        Active
+                      </span>
+                    )}
+                    {d.rate === 100 && d.total > 0 && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 uppercase tracking-wide">
+                        Complete
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-bold text-slate-900 text-[11px]">
+                    {d.completed} of {d.total} tasks ({d.rate}%)
+                  </span>
+                </div>
+
+                <div className="w-full h-1.5 rounded-full bg-slate-200/80 overflow-hidden flex">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      d.rate === 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${d.rate}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Operational Velocity KPI Row */}
+        <div className="mt-3.5 grid grid-cols-3 gap-2">
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-semibold uppercase">
+              <Award className="w-3 h-3 text-emerald-600" />
+              <span>On-Time Rate</span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-slate-900">{onTimeRate}%</p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-semibold uppercase">
+              <Clock className="w-3 h-3 text-blue-600" />
+              <span>In Progress</span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {inProgressTasks} <span className="text-[10px] font-normal text-slate-500">({reviewTasks} in review)</span>
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-semibold uppercase">
+              <ShieldAlert className="w-3 h-3 text-purple-600" />
+              <span>Impediments</span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {blockedTasks}{' '}
+              <span className="text-[10px] font-normal text-slate-500">{blockedTasks === 1 ? 'task' : 'tasks'}</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Visual Chart Bars - Sits immediately under header without awkward gap */}
-      <div className="mt-3.5 space-y-2.5">
-        {trendData.map((d, index) => {
-          const isSelected = selectedPoint === index;
-          return (
-            <div
-              key={d.label}
-              onMouseEnter={() => setSelectedPoint(index)}
-              onMouseLeave={() => setSelectedPoint(null)}
-              className={`p-2.5 rounded-xl border transition-all ${
-                isSelected
-                  ? 'bg-blue-50/60 border-blue-200 shadow-2xs'
-                  : d.isCurrent
-                  ? 'bg-slate-50/70 border-blue-200/70'
-                  : 'bg-slate-50/40 border-slate-100 hover:border-slate-200'
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-800">{d.label}</span>
-                  {d.isCurrent && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700 uppercase tracking-wide">
-                      Active Sprint
-                    </span>
-                  )}
-                  {d.rate === 100 && d.total > 0 && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 uppercase tracking-wide">
-                      Complete
-                    </span>
-                  )}
-                </div>
-                <span className="font-bold text-slate-900">
-                  {d.completed} of {d.total} tasks completed ({d.rate}%)
-                </span>
-              </div>
-
-              <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden flex">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    d.rate === 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${d.rate}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer cleanly anchored to bottom with mt-auto */}
-      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+      {/* Footer */}
+      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
         <span className="flex items-center gap-1.5">
           <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
           <span>{totalDone} Completed deliverables</span>
         </span>
         <span className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-blue-600" />
-          <span>{tasks.filter((t) => t.status !== 'DONE').length} Active in flight</span>
+          <span>{activeTasks.length} Active in flight</span>
         </span>
       </div>
     </div>
   );
 };
+

@@ -14,7 +14,9 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectId, setProjectId] = useState(projects[0]?.id || '');
+  const [projectInput, setProjectInput] = useState(
+    projects[0] ? `${projects[0].projectName} (${projects[0].clientName})` : ''
+  );
   const [assignedEmployeeId, setAssignedEmployeeId] = useState(
     users.find((u) => u.active && u.role === 'EMPLOYEE')?.id || ''
   );
@@ -47,10 +49,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       setError('Task description is required.');
       return;
     }
-    if (!projectId) {
-      setError('Project selection is required.');
-      return;
-    }
+
     if (!assignedEmployeeId) {
       setError('An assigned owner is required.');
       return;
@@ -59,16 +58,13 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       setError('Due date deadline is required.');
       return;
     }
-    if (!nextAction.trim()) {
-      setError('Next Action is mandatory to enforce clear operational accountability.');
-      return;
-    }
+
 
     setLoading(true);
     const res = await createTask({
       title,
       description,
-      projectId,
+      projectId: projectInput.trim(),
       assignedEmployeeId,
       priority,
       dueDate,
@@ -85,6 +81,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       // Reset form
       setTitle('');
       setDescription('');
+      setProjectInput('');
       setNextAction('');
       setNotes('');
       setReferenceLink('');
@@ -159,22 +156,26 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
           {/* Project & Assignee Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="task-project-select" className="block font-bold text-slate-700 mb-1">
-                Project & Client <span className="text-rose-500">*</span>
+              <label htmlFor="task-project-input" className="block font-bold text-slate-700 mb-1">
+                Project or Client
               </label>
-              <select
-                id="task-project-select"
-                required
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+              <input
+                id="task-project-input"
+                type="text"
+                // required
+                list="project-suggestions-create"
+                placeholder="e.g. Phoenix Enterprise Cloud (Phoenix Financial)"
+                value={projectInput}
+                onChange={(e) => setProjectInput(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
+              />
+              <datalist id="project-suggestions-create">
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.projectName} ({p.clientName})
+                  <option key={p.id} value={`${p.projectName} (${p.clientName})`}>
+                    {p.projectName}
                   </option>
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div>
@@ -236,7 +237,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
           {/* Mandatory Next Action */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
             <label htmlFor="task-next-action-input" className="block font-bold text-blue-950">
-              Immediate Next Action <span className="text-rose-500">*</span>
+              Immediate Next Action
             </label>
             <p className="text-[11px] text-blue-700">
               State the exact first physical or logical step the owner must take to begin.
@@ -244,7 +245,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
             <input
               id="task-next-action-input"
               type="text"
-              required
+
               placeholder="e.g. Schedule design sync with Sarah and draft API contract"
               value={nextAction}
               onChange={(e) => setNextAction(e.target.value)}
@@ -322,8 +323,8 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
               {loading
                 ? 'Creating Task...'
                 : attachments.length > 0
-                ? `Assign & Create Task (${attachments.length} ${attachments.length === 1 ? 'doc' : 'docs'})`
-                : 'Assign & Create Task'}
+                  ? `Assign & Create Task (${attachments.length} ${attachments.length === 1 ? 'doc' : 'docs'})`
+                  : 'Assign & Create Task'}
             </button>
           </div>
         </form>

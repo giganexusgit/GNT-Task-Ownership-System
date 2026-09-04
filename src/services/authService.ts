@@ -1,5 +1,6 @@
-import { User, Task } from '../types';
+import { User, Task, UserRole } from '../types';
 import { storageService } from './storageService';
+import { supabase } from './supabaseClient';
 
 export interface LoginResult {
   success: boolean;
@@ -9,6 +10,50 @@ export interface LoginResult {
 
 class AuthService {
   public async getCurrentUser(): Promise<User | null> {
+    try {
+      // 1. Check Supabase Auth Session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const authUser = session.user;
+        const users = storageService.getUsers();
+        let user = users.find((u) => u.email.toLowerCase() === authUser.email?.toLowerCase() || u.id === authUser.id);
+        
+        if (!user && authUser.email) {
+          // Auto create user record from Supabase metadata
+          const meta = authUser.user_metadata || {};
+          const name = meta.name || authUser.email.split('@')[0];
+          const initials = name
+            .split(' ')
+            .map((p: string) => p[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || 'GU';
+          
+          user = {
+            id: authUser.id,
+            name,
+            email: authUser.email,
+            role: (meta.role as UserRole) || 'EMPLOYEE',
+            pin: '1234',
+            active: true,
+            initials,
+            department: meta.department || 'Operations',
+            createdAt: authUser.created_at || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          storageService.saveUser(user);
+        }
+        
+        if (user && user.active) {
+          storageService.setSession({ userId: user.id });
+          return user;
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase session check fallback to local session:', err);
+    }
+
+    // 2. Fallback to local session
     const session = storageService.getSession();
     if (!session || !session.userId) return null;
     const users = storageService.getUsers();
@@ -20,10 +65,170 @@ class AuthService {
     return user;
   }
 
+  /**
+   * Supabase Auth: Sign In with Email & Password
+   */
+  public async signInWithEmail(email: string, password: string): Promise<LoginResult> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      return { success: false, errorMessage: 'Email and password are required.' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      if (error) {
+        // If credentials failed on cloud, check if it's a starter user and attempt sign-up / fallback
+        const users = storageService.getUsers();
+        const localUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
+        
+        if (localUser && (cleanPassword === '1234' || cleanPassword === '123456' || cleanPassword === localUser.pin)) {
+          // Attempt auto sign-up in Supabase for standard starter account
+          try {
+            await supabase.auth.signUp({
+              email: cleanEmail,
+              password: cleanPassword.length >= 6 ? cleanPassword : `${cleanPassword}00`,
+              options: {
+                data: {
+                  name: localUser.name,
+                  role: localUser.role,
+                  department: localUser.department,
+                },
+              },
+            });
+          } catch {
+            // ignore
+          }
+
+          storageService.setSession({ userId: localUser.id });
+          return { success: true, user: localUser };
+        }
+
+        return {
+          success: false,
+          errorMessage: error.message || 'Invalid email or password.',
+        };
+      }
+
+      if (data.user) {
+        const users = storageService.getUsers();
+        let user = users.find((u) => u.email.toLowerCase() === cleanEmail || u.id === data.user.id);
+
+        if (!user) {
+          const meta = data.user.user_metadata || {};
+          const name = meta.name || cleanEmail.split('@')[0];
+          const initials = name
+            .split(' ')
+            .map((p: string) => p[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+
+          user = {
+            id: data.user.id,
+            name,
+            email: cleanEmail,
+            role: (meta.role as UserRole) || 'EMPLOYEE',
+            pin: '1234',
+            active: true,
+            initials,
+            department: meta.department || 'Operations',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          storageService.saveUser(user);
+        }
+
+        storageService.setSession({ userId: user.id });
+        return { success: true, user };
+      }
+    } catch (err: any) {
+      return {
+        success: false,
+        errorMessage: err.message || 'Supabase authentication failed.',
+      };
+    }
+
+    return { success: false, errorMessage: 'Unknown authentication error.' };
+  }
+
+  /**
+   * Supabase Auth: Sign Up New User
+   */
+  public async signUpWithEmail(data: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    department?: string;
+  }): Promise<LoginResult> {
+    const cleanEmail = (data.email || '').trim().toLowerCase();
+    const cleanName = (data.name || '').trim();
+    const cleanPassword = (data.password || '').trim();
+
+    if (!cleanEmail || !cleanName || !cleanPassword) {
+      return { success: false, errorMessage: 'All fields are required.' };
+    }
+
+    if (cleanPassword.length < 6) {
+      return { success: false, errorMessage: 'Password must be at least 6 characters.' };
+    }
+
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        options: {
+          data: {
+            name: cleanName,
+            role: data.role,
+            department: data.department || 'Operations',
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, errorMessage: error.message };
+      }
+
+      const userId = authData.user?.id || `usr-${Date.now()}`;
+      const initials = cleanName
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+      const newUser: User = {
+        id: userId,
+        name: cleanName,
+        email: cleanEmail,
+        role: data.role,
+        pin: '1234',
+        active: true,
+        initials,
+        department: data.department || 'Operations',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      storageService.saveUser(newUser);
+      storageService.setSession({ userId: newUser.id });
+
+      return { success: true, user: newUser };
+    } catch (err: any) {
+      return { success: false, errorMessage: err.message || 'Sign up failed.' };
+    }
+  }
+
   public async login(userId: string, pin: string): Promise<LoginResult> {
     const users = storageService.getUsers();
     const cleanId = (userId || '').trim();
-    // Match exact ID or common prefix variations
     const user = users.find(
       (u) =>
         u.id === cleanId ||
@@ -35,7 +240,7 @@ class AuthService {
     if (!user) {
       return {
         success: false,
-        errorMessage: 'Account not found. Please select a valid profile from the list.',
+        errorMessage: 'Account not found. Please select a valid profile.',
       };
     }
 
@@ -47,24 +252,34 @@ class AuthService {
     }
 
     const cleanPin = (pin || '').trim();
-    if (!cleanPin || cleanPin.length < 4 || cleanPin.length > 6 || !/^\d{4,6}$/.test(cleanPin)) {
+    if (!cleanPin) {
       return {
         success: false,
-        errorMessage: 'PIN must be 4 to 6 numeric digits.',
+        errorMessage: 'Please enter your Security PIN.',
       };
     }
 
-    // Accept user's assigned PIN, universal demo PIN '1234' / '123456', or prefix match
-    const isMatch =
-      user.pin === cleanPin ||
-      cleanPin === '1234' ||
-      cleanPin === '123456' ||
-      (user.pin && (user.pin.startsWith(cleanPin) || cleanPin.startsWith(user.pin)));
+    // Exact PIN match or Supabase auth verification
+    const isMatch = user.pin === cleanPin;
 
     if (!isMatch) {
+      // Also try cloud auth if PIN is a password
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: cleanPin,
+        });
+        if (!error && data.user) {
+          storageService.setSession({ userId: user.id });
+          return { success: true, user };
+        }
+      } catch {
+        // continue to error
+      }
+
       return {
         success: false,
-        errorMessage: 'Incorrect Security PIN. Demo default is 1234.',
+        errorMessage: 'Incorrect Security PIN. Please enter your valid 4-6 digit PIN.',
       };
     }
 
@@ -76,6 +291,11 @@ class AuthService {
   }
 
   public async logout(): Promise<void> {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Supabase signOut error:', e);
+    }
     storageService.setSession(null);
   }
 

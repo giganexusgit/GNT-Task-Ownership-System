@@ -46,7 +46,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       setEmail('');
       setPin('1234');
     } else {
-      setError(res.message || 'Failed to create team member');
+      setError(res.message || 'Failed to create employee');
     }
   };
 
@@ -58,7 +58,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       >
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Add Team Member</h2>
+            <h2 className="text-base font-bold text-slate-900">Add Employee</h2>
             <p className="text-xs text-slate-500">Provision identity and security credentials</p>
           </div>
           <button
@@ -170,7 +170,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
               disabled={loading}
               className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs transition-colors flex items-center gap-2"
             >
-              {loading ? 'Adding...' : 'Add Team Member'}
+              {loading ? 'Adding...' : 'Add Employee'}
             </button>
           </div>
         </form>

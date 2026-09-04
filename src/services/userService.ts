@@ -140,6 +140,17 @@ class UserService {
     return { success: true, message: `PIN for ${target.name} reset successfully.` };
   }
 
+  public async changeUserRole(
+    userId: string,
+    newRole: UserRole,
+    actor: User
+  ): Promise<{ success: boolean; message: string; user?: User }> {
+    if (!authService.canManageUsers(actor)) {
+      return { success: false, message: 'Unauthorized: Only Admins can change user roles.' };
+    }
+    return this.updateUser(userId, { role: newRole }, actor);
+  }
+
   public async updateUser(
     userId: string,
     updates: Partial<Omit<User, 'id' | 'createdAt'>>,
@@ -157,7 +168,7 @@ class UserService {
     if (users[targetIndex].role === 'ADMIN' && updates.role && updates.role !== 'ADMIN') {
       const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active);
       if (activeAdmins.length <= 1) {
-        return { success: false, message: 'Cannot demote the only remaining Administrator.' };
+        return { success: false, message: 'Action prohibited: Cannot demote the only remaining Administrator.' };
       }
     }
 
@@ -179,7 +190,59 @@ class UserService {
     users[targetIndex] = updatedUser;
     storageService.setUsers(users);
 
-    return { success: true, message: 'User updated successfully.', user: updatedUser };
+    const message = updates.role
+      ? `Role for ${updatedUser.name} changed to ${updates.role}.`
+      : 'User updated successfully.';
+
+    return { success: true, message, user: updatedUser };
+  }
+
+  public async deleteUser(
+    userId: string,
+    actor: User
+  ): Promise<{ success: boolean; message: string }> {
+    if (!authService.canManageUsers(actor)) {
+      return { success: false, message: 'Unauthorized: Only Admins can delete employees.' };
+    }
+
+    if (actor.id === userId) {
+      return { success: false, message: 'Action prohibited: Cannot delete your own active administrator account.' };
+    }
+
+    const users = storageService.getUsers();
+    const targetUser = users.find((u) => u.id === userId);
+    if (!targetUser) return { success: false, message: 'Employee not found.' };
+
+    if (targetUser.role === 'ADMIN') {
+      const activeAdmins = users.filter((u) => u.role === 'ADMIN' && u.active);
+      if (activeAdmins.length <= 1) {
+        return { success: false, message: 'Action prohibited: Cannot delete the only remaining Administrator.' };
+      }
+    }
+
+    const updatedUsers = users.filter((u) => u.id !== userId);
+    storageService.setUsers(updatedUsers);
+
+    // Also update any tasks assigned to this employee to 'Unassigned'
+    const tasks = storageService.getTasks();
+    let tasksModified = false;
+    const updatedTasks = tasks.map((t) => {
+      if (t.assignedEmployeeId === userId) {
+        tasksModified = true;
+        return {
+          ...t,
+          assignedEmployeeId: '',
+          assignedEmployeeName: 'Unassigned',
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return t;
+    });
+    if (tasksModified) {
+      storageService.setTasks(updatedTasks);
+    }
+
+    return { success: true, message: `Employee "${targetUser.name}" has been permanently deleted.` };
   }
 }
 

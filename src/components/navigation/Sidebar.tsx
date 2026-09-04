@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? [
           { label: 'Dashboard', route: '/admin/dashboard', icon: LayoutDashboard },
           { label: 'Tasks', route: '/admin/tasks', icon: CheckSquare },
-          { label: 'Team', route: '/admin/team', icon: Users },
+          { label: 'Employees', route: '/admin/team', icon: Users },
           { label: 'Projects', route: '/admin/projects', icon: FolderKanban },
           { label: 'Reports', fullLabel: 'Monthly Reports', route: '/admin/reports', icon: FileBarChart2 },
           { label: 'Notifications', route: '/notifications', icon: Bell, badge: unreadNotificationCount },
@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { label: 'Dashboard', route: '/manager/dashboard', icon: LayoutDashboard },
           { label: 'Tasks', route: '/manager/tasks', icon: CheckSquare },
           { label: 'Projects', route: '/manager/projects', icon: FolderKanban },
-          { label: 'Team', route: '/manager/team', icon: Users },
+          { label: 'Employees', route: '/manager/team', icon: Users },
           { label: 'Reports', fullLabel: 'Monthly Reports', route: '/manager/reports', icon: FileBarChart2 },
           { label: 'Notifications', route: '/notifications', icon: Bell, badge: unreadNotificationCount },
           { label: 'Profile', route: '/employee/profile', icon: UserCheck },

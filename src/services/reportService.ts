@@ -264,7 +264,7 @@ class ReportService {
     const lines: string[] = [];
 
     // Header metadata
-    lines.push(`"GNT TASK OWNERSHIP SYSTEM - MONTHLY OPERATIONAL REPORT"`);
+    lines.push(`"GNT WORKBOARD - MONTHLY OPERATIONAL REPORT"`);
     lines.push(`"Report Month","${report.monthLabel} (${report.filter.month})"`);
     lines.push(`"Generated At","${new Date(report.generatedAt).toLocaleString()}"`);
     lines.push('');

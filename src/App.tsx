@@ -23,6 +23,7 @@ import { TaskDetailDrawer } from './components/tasks/TaskDetailDrawer';
 import { ProjectModal } from './components/projects/ProjectModal';
 import { AddUserModal } from './components/team/AddUserModal';
 import { ResetPinModal } from './components/team/ResetPinModal';
+import { ChangeRoleModal } from './components/team/ChangeRoleModal';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { Task, Project, User } from './types';
 
@@ -63,6 +64,7 @@ const MainAppLayout: React.FC = () => {
   // User modal
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [selectedUserForResetPin, setSelectedUserForResetPin] = useState<User | null>(null);
+  const [selectedUserForChangeRole, setSelectedUserForChangeRole] = useState<User | null>(null);
 
   if (!currentUser) {
     return <LoginView />;
@@ -86,7 +88,8 @@ const MainAppLayout: React.FC = () => {
       pageSubtitle = 'Strategic initiatives and milestone progress tracking';
       break;
     case '/admin/team':
-      pageTitle = 'Team & Role Access Management';
+    case '/manager/team':
+      pageTitle = 'Employees & Access Management';
       pageSubtitle = 'Accountability assignments, permissions, and security credentials';
       break;
     case '/admin/reports':
@@ -130,7 +133,7 @@ const MainAppLayout: React.FC = () => {
       pageSubtitle = 'Task assignments, blocker escalations, and deadline warnings';
       break;
     default:
-      pageTitle = 'GNT Task Ownership';
+      pageTitle = 'GNT Workboard';
       pageSubtitle = 'Operational Management System';
   }
 
@@ -188,6 +191,7 @@ const MainAppLayout: React.FC = () => {
             <TeamTable
               onOpenAddUser={() => setIsAddUserModalOpen(true)}
               onOpenResetPin={(u) => setSelectedUserForResetPin(u)}
+              onOpenChangeRole={(u) => setSelectedUserForChangeRole(u)}
             />
           )}
           {activeRoute === '/admin/reports' && <MonthlyReportView />}
@@ -215,6 +219,13 @@ const MainAppLayout: React.FC = () => {
                 setSelectedProjectForEdit(p);
                 setIsProjectModalOpen(true);
               }}
+            />
+          )}
+          {activeRoute === '/manager/team' && (
+            <TeamTable
+              onOpenAddUser={() => setIsAddUserModalOpen(true)}
+              onOpenResetPin={(u) => setSelectedUserForResetPin(u)}
+              onOpenChangeRole={(u) => setSelectedUserForChangeRole(u)}
             />
           )}
           {activeRoute === '/manager/reports' && <MonthlyReportView />}
@@ -277,6 +288,12 @@ const MainAppLayout: React.FC = () => {
         user={selectedUserForResetPin}
         isOpen={!!selectedUserForResetPin}
         onClose={() => setSelectedUserForResetPin(null)}
+      />
+
+      <ChangeRoleModal
+        user={selectedUserForChangeRole}
+        isOpen={!!selectedUserForChangeRole}
+        onClose={() => setSelectedUserForChangeRole(null)}
       />
 
       {/* Toast notifications container */}

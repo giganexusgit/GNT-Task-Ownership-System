@@ -1,5 +1,6 @@
 import { User, Project, Task, TaskActivity, Notification, SystemStats } from '../types';
 import { SEED_USERS, SEED_PROJECTS, SEED_TASKS, SEED_ACTIVITIES, SEED_NOTIFICATIONS } from '../data/seedData';
+import { supabaseDb } from './supabaseDb';
 
 const STORAGE_KEYS = {
   USERS: 'gnt_users',
@@ -9,11 +10,12 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'gnt_notifications',
   SESSION: 'gnt_session',
   SETTINGS: 'gnt_settings',
-  INITIALIZED: 'gnt_db_initialized_v1',
+  INITIALIZED: 'gnt_workboard_fresh_v1',
 };
 
 class StorageService {
   private listeners: Set<() => void> = new Set();
+  private isInitialized = false;
 
   constructor() {
     this.ensureInitialized();
@@ -39,9 +41,10 @@ class StorageService {
   public ensureInitialized(): void {
     try {
       const isInit = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
-      if (!isInit) {
+      if (isInit !== 'true') {
         this.resetToSeedData();
       }
+      this.isInitialized = true;
     } catch (e) {
       console.error('Failed checking initialization', e);
     }
@@ -57,14 +60,19 @@ class StorageService {
       localStorage.setItem(
         STORAGE_KEYS.SETTINGS,
         JSON.stringify({
-          systemName: 'GNT Task Ownership System',
-          version: '1.0-MVP',
+          systemName: 'GNT Workboard',
+          version: '1.0-FRESH',
           deployedEnvironment: 'Internal Operations',
           updatedAt: new Date().toISOString(),
         })
       );
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
       this.notify();
+
+      // Also push seed data to Supabase if tables are newly initialized
+      supabaseDb.upsertUsers(SEED_USERS).catch(() => {});
+      supabaseDb.upsertProjects(SEED_PROJECTS).catch(() => {});
+      supabaseDb.upsertTasks(SEED_TASKS).catch(() => {});
     } catch (e) {
       console.error('Failed to reset to seed data', e);
     }
@@ -91,47 +99,135 @@ class StorageService {
     }
   }
 
-  // Domain accessors
+  // ==================== USERS ====================
   public getUsers(): User[] {
     return this.getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
   }
 
-  public setUsers(users: User[]): void {
+  public setUsers(users: User[], syncCloud = true): void {
     this.setItem(STORAGE_KEYS.USERS, users);
+    if (syncCloud) {
+      supabaseDb.upsertUsers(users).catch((e) => console.warn('Supabase sync users error:', e));
+    }
   }
 
+  public saveUser(user: User): void {
+    const users = this.getUsers();
+    const idx = users.findIndex((u) => u.id === user.id || u.email.toLowerCase() === user.email.toLowerCase());
+    if (idx >= 0) {
+      users[idx] = user;
+    } else {
+      users.push(user);
+    }
+    this.setItem(STORAGE_KEYS.USERS, users);
+    supabaseDb.upsertUser(user).catch((e) => console.warn('Supabase save user error:', e));
+  }
+
+  public deleteUser(userId: string): void {
+    const users = this.getUsers().filter((u) => u.id !== userId);
+    this.setItem(STORAGE_KEYS.USERS, users);
+    supabaseDb.deleteUser(userId).catch((e) => console.warn('Supabase delete user error:', e));
+  }
+
+  // ==================== PROJECTS ====================
   public getProjects(): Project[] {
     return this.getItem<Project[]>(STORAGE_KEYS.PROJECTS, SEED_PROJECTS);
   }
 
-  public setProjects(projects: Project[]): void {
+  public setProjects(projects: Project[], syncCloud = true): void {
     this.setItem(STORAGE_KEYS.PROJECTS, projects);
+    if (syncCloud) {
+      supabaseDb.upsertProjects(projects).catch((e) => console.warn('Supabase sync projects error:', e));
+    }
   }
 
+  public saveProject(project: Project): void {
+    const projects = this.getProjects();
+    const idx = projects.findIndex((p) => p.id === project.id);
+    if (idx >= 0) {
+      projects[idx] = project;
+    } else {
+      projects.unshift(project);
+    }
+    this.setItem(STORAGE_KEYS.PROJECTS, projects);
+    supabaseDb.upsertProject(project).catch((e) => console.warn('Supabase save project error:', e));
+  }
+
+  public deleteProject(projectId: string): void {
+    const projects = this.getProjects().filter((p) => p.id !== projectId);
+    this.setItem(STORAGE_KEYS.PROJECTS, projects);
+    supabaseDb.deleteProject(projectId).catch((e) => console.warn('Supabase delete project error:', e));
+  }
+
+  // ==================== TASKS ====================
   public getTasks(): Task[] {
     return this.getItem<Task[]>(STORAGE_KEYS.TASKS, SEED_TASKS);
   }
 
-  public setTasks(tasks: Task[]): void {
+  public setTasks(tasks: Task[], syncCloud = true): void {
     this.setItem(STORAGE_KEYS.TASKS, tasks);
+    if (syncCloud) {
+      supabaseDb.upsertTasks(tasks).catch((e) => console.warn('Supabase sync tasks error:', e));
+    }
   }
 
+  public saveTask(task: Task): void {
+    const tasks = this.getTasks();
+    const idx = tasks.findIndex((t) => t.id === task.id);
+    if (idx >= 0) {
+      tasks[idx] = task;
+    } else {
+      tasks.unshift(task);
+    }
+    this.setItem(STORAGE_KEYS.TASKS, tasks);
+    supabaseDb.upsertTask(task).catch((e) => console.warn('Supabase save task error:', e));
+  }
+
+  public deleteTask(taskId: string): void {
+    const tasks = this.getTasks().filter((t) => t.id !== taskId);
+    this.setItem(STORAGE_KEYS.TASKS, tasks);
+    supabaseDb.deleteTask(taskId).catch((e) => console.warn('Supabase delete task error:', e));
+  }
+
+  // ==================== ACTIVITIES ====================
   public getActivities(): TaskActivity[] {
     return this.getItem<TaskActivity[]>(STORAGE_KEYS.ACTIVITIES, SEED_ACTIVITIES);
   }
 
-  public setActivities(activities: TaskActivity[]): void {
+  public setActivities(activities: TaskActivity[], syncCloud = true): void {
     this.setItem(STORAGE_KEYS.ACTIVITIES, activities);
+    if (syncCloud) {
+      supabaseDb.upsertActivities(activities).catch((e) => console.warn('Supabase sync activities error:', e));
+    }
   }
 
+  public saveActivity(activity: TaskActivity): void {
+    const activities = this.getActivities();
+    activities.unshift(activity);
+    this.setItem(STORAGE_KEYS.ACTIVITIES, activities.slice(0, 200));
+    supabaseDb.upsertActivity(activity).catch((e) => console.warn('Supabase save activity error:', e));
+  }
+
+  // ==================== NOTIFICATIONS ====================
   public getNotifications(): Notification[] {
     return this.getItem<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, SEED_NOTIFICATIONS);
   }
 
-  public setNotifications(notifications: Notification[]): void {
+  public setNotifications(notifications: Notification[], syncCloud = true): void {
     this.setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    if (syncCloud) {
+      supabaseDb.upsertNotifications(notifications).catch((e) => console.warn('Supabase sync notifications error:', e));
+    }
   }
 
+  public saveNotification(notification: Notification): void {
+    const notifs = this.getNotifications();
+    notifs.unshift(notification);
+    this.setItem(STORAGE_KEYS.NOTIFICATIONS, notifs.slice(0, 100));
+    supabaseDb.upsertNotification(notification).catch((e) => console.warn('Supabase save notification error:', e));
+  }
+
+  // ==================== SESSION ====================
   public getSession(): { userId: string } | null {
     return this.getItem<{ userId: string } | null>(STORAGE_KEYS.SESSION, null);
   }
@@ -143,6 +239,26 @@ class StorageService {
     } else {
       this.setItem(STORAGE_KEYS.SESSION, session);
     }
+  }
+
+  // ==================== SUPABASE BIDIRECTIONAL SYNC ====================
+  public async syncWithSupabase(): Promise<void> {
+    const localData = {
+      users: this.getUsers(),
+      projects: this.getProjects(),
+      tasks: this.getTasks(),
+      activities: this.getActivities(),
+      notifications: this.getNotifications(),
+    };
+
+    await supabaseDb.performFullSync(localData, (cloudData) => {
+      this.setItem(STORAGE_KEYS.USERS, cloudData.users);
+      this.setItem(STORAGE_KEYS.PROJECTS, cloudData.projects);
+      this.setItem(STORAGE_KEYS.TASKS, cloudData.tasks);
+      this.setItem(STORAGE_KEYS.ACTIVITIES, cloudData.activities);
+      this.setItem(STORAGE_KEYS.NOTIFICATIONS, cloudData.notifications);
+      this.notify();
+    });
   }
 
   // Backup / Export / Import / Stats

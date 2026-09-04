@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Task, Project, TaskActivity, Notification, TaskStatus, TaskPriority, ProjectStatus, UserRole } from '../types';
 import { storageService } from '../services/storageService';
 import { authService, LoginResult } from '../services/authService';
+import { supabase } from '../services/supabaseClient';
 import { taskService } from '../services/taskService';
 import { userService } from '../services/userService';
 import { projectService } from '../services/projectService';
@@ -41,6 +42,14 @@ interface AppContextType {
 
   // Actions
   login: (userId: string, pin: string) => Promise<LoginResult>;
+  signInWithEmail: (email: string, password: string) => Promise<LoginResult>;
+  signUpWithEmail: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    department?: string;
+  }) => Promise<LoginResult>;
   logout: () => Promise<void>;
   switchUser: (userId: string) => Promise<void>;
   navigateTo: (route: string, filterParams?: Record<string, any>) => void;
@@ -102,6 +111,8 @@ interface AppContextType {
 
   toggleUserActive: (userId: string) => Promise<{ success: boolean; message: string }>;
   resetUserPin: (userId: string, newPin: string) => Promise<{ success: boolean; message: string }>;
+  changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; message: string; user?: User }>;
+  deleteUser: (userId: string) => Promise<{ success: boolean; message: string }>;
 
   // Project Actions
   createProject: (data: {
@@ -177,10 +188,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     refreshAllState();
+
+    // Trigger initial cloud sync with Supabase
+    storageService.syncWithSupabase().then(() => {
+      refreshAllState();
+    });
+
     const unsubscribe = storageService.subscribe(() => {
       refreshAllState();
     });
-    return () => unsubscribe();
+
+    // Real-time Supabase postgres_changes listener
+    const channel = supabase
+      .channel('public:db-sync')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        storageService.syncWithSupabase();
+      })
+      .subscribe();
+
+    return () => {
+      unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, [refreshAllState]);
 
   const showToast = useCallback(
@@ -200,6 +229,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const signInWithEmail = async (email: string, password: string): Promise<LoginResult> => {
+    const res = await authService.signInWithEmail(email, password);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      showToast(
+        'Signed In Successfully',
+        `Welcome, ${res.user.name} (${res.user.role} workspace active)`,
+        'success'
+      );
+      if (res.user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
+      else if (res.user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
+      else setActiveRoute('/employee/tasks');
+    } else {
+      showToast('Authentication Failed', res.errorMessage || 'Invalid email or password', 'error');
+    }
+    return res;
+  };
+
+  const signUpWithEmail = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    department?: string;
+  }): Promise<LoginResult> => {
+    const res = await authService.signUpWithEmail(data);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      showToast(
+        'Account Created Successfully',
+        `Welcome to GNT Workboard, ${res.user.name}!`,
+        'success'
+      );
+      if (res.user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
+      else if (res.user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
+      else setActiveRoute('/employee/tasks');
+    } else {
+      showToast('Registration Failed', res.errorMessage || 'Unable to create account', 'error');
+    }
+    return res;
+  };
 
   const login = async (userId: string, pin: string): Promise<LoginResult> => {
     const res = await authService.login(userId, pin);
@@ -390,6 +461,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return res;
   };
 
+  const changeUserRole = async (userId: string, newRole: UserRole) => {
+    if (!currentUser) return { success: false, message: 'User not authenticated' };
+    const res = await userService.changeUserRole(userId, newRole, currentUser);
+    if (res.success) {
+      showToast('Role Updated', res.message, 'success');
+      // If current user modified their own role, update currentUser state
+      if (currentUser.id === userId && res.user) {
+        setCurrentUser(res.user);
+      }
+    } else {
+      showToast('Action Prohibited', res.message, 'error');
+    }
+    return res;
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!currentUser) return { success: false, message: 'User not authenticated' };
+    const res = await userService.deleteUser(userId, currentUser);
+    if (res.success) {
+      showToast('Employee Deleted', res.message, 'success');
+    } else {
+      showToast('Delete Failed', res.message, 'error');
+    }
+    return res;
+  };
+
   // Project Actions
   const createProject = async (data: any) => {
     if (!currentUser) return { success: false, message: 'User not authenticated' };
@@ -480,6 +577,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedTaskId,
         taskFilterState,
         login,
+        signInWithEmail,
+        signUpWithEmail,
         logout,
         switchUser,
         navigateTo,
@@ -495,6 +594,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createUser,
         toggleUserActive,
         resetUserPin,
+        changeUserRole,
+        deleteUser,
         createProject,
         updateProject,
         deleteProject,

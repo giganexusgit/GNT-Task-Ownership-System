@@ -12,21 +12,31 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldAlert,
+  Trash2,
+  FileBarChart2,
+  X,
 } from 'lucide-react';
 
 interface TeamTableProps {
   onOpenAddUser: () => void;
   onOpenResetPin: (user: User) => void;
+  onOpenChangeRole: (user: User) => void;
 }
 
-export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenResetPin }) => {
-  const { users, tasks, currentUser, toggleUserActive, navigateTo } = useApp();
+export const TeamTable: React.FC<TeamTableProps> = ({
+  onOpenAddUser,
+  onOpenResetPin,
+  onOpenChangeRole,
+}) => {
+  const { users, tasks, currentUser, toggleUserActive, deleteUser, navigateTo } = useApp();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const canManageUsers = authService.canManageUsers(currentUser);
 
-  let filtered = users.filter((u) => {
+  const filtered = users.filter((u) => {
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       const match =
@@ -39,6 +49,14 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
     return true;
   });
 
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setDeleting(true);
+    await deleteUser(userToDelete.id);
+    setDeleting(false);
+    setUserToDelete(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Filter & Add Team Member */}
@@ -48,7 +66,7 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
           <input
             id="input-team-search"
             type="text"
-            placeholder="Search by team member name, email, or department..."
+            placeholder="Search employees by name, email, or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -75,19 +93,19 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
               className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Member</span>
+              <span>Add Employee</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Team Member Table */}
+      {/* Employees Table */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table id="table-team-members" className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 uppercase font-semibold border-b border-slate-200/80 text-[11px] tracking-wider">
-                <th className="py-3 px-4">Member</th>
+                <th className="py-3 px-4">Employee</th>
                 <th className="py-3 px-3">Role</th>
                 <th className="py-3 px-3">Department</th>
                 <th className="py-3 px-3 text-center">Active Tasks</th>
@@ -101,6 +119,7 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
                 const userTasks = tasks.filter((t) => t.assignedEmployeeId === u.id);
                 const activeCount = userTasks.filter((t) => t.status !== 'DONE').length;
                 const completedCount = userTasks.filter((t) => t.status === 'DONE').length;
+                const isCurrentSelf = currentUser?.id === u.id;
 
                 return (
                   <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
@@ -177,7 +196,7 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
                           <button
                             id={`btn-reset-pin-${u.id}`}
                             onClick={() => onOpenResetPin(u)}
-                            title="Reset 4-Digit Security PIN"
+                            title="Reset Security PIN"
                             className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors flex items-center gap-1"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
@@ -185,17 +204,52 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
                           </button>
 
                           <button
+                            id={`btn-change-role-${u.id}`}
+                            onClick={() => onOpenChangeRole(u)}
+                            title="Change Employee Role"
+                            className="p-1.5 rounded-lg border border-purple-200 bg-purple-50/50 hover:bg-purple-100/70 text-purple-700 transition-colors flex items-center gap-1"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
+                            <span className="text-[11px] font-semibold">Role</span>
+                          </button>
+
+                          <button
+                            id={`btn-employee-report-${u.id}`}
+                            onClick={() => {
+                              const targetRoute = currentUser?.role === 'ADMIN' ? '/admin/reports' : '/manager/reports';
+                              navigateTo(targetRoute, { employeeId: u.id });
+                            }}
+                            title="View Employee Monthly Performance Report"
+                            className="p-1.5 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100/70 text-blue-700 transition-colors flex items-center gap-1"
+                          >
+                            <FileBarChart2 className="w-3.5 h-3.5 text-blue-600" />
+                            <span className="text-[11px] font-semibold">Report</span>
+                          </button>
+
+                          <button
                             id={`btn-toggle-active-${u.id}`}
                             onClick={() => toggleUserActive(u.id)}
-                            title={u.active ? 'Deactivate Member' : 'Reactivate Member'}
+                            title={u.active ? 'Deactivate Employee' : 'Reactivate Employee'}
                             className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
                               u.active
-                                ? 'text-rose-600 hover:bg-rose-50 border border-slate-200'
+                                ? 'text-slate-600 hover:text-amber-700 hover:bg-amber-50 border border-slate-200'
                                 : 'text-emerald-600 hover:bg-emerald-50 border border-emerald-200 bg-emerald-50/50'
                             }`}
                           >
                             {u.active ? 'Deactivate' : 'Activate'}
                           </button>
+
+                          {!isCurrentSelf && (
+                            <button
+                              id={`btn-delete-user-${u.id}`}
+                              onClick={() => setUserToDelete(u)}
+                              title="Delete Employee Permanently"
+                              className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="text-[11px] font-semibold">Delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -206,6 +260,48 @@ export const TeamTable: React.FC<TeamTableProps> = ({ onOpenAddUser, onOpenReset
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-900">Delete Employee Account?</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Are you sure you want to permanently delete <strong>{userToDelete.name}</strong> ({userToDelete.email})?
+                </p>
+                <p className="text-[11px] text-rose-600 font-medium mt-2 bg-rose-50 p-2 rounded-lg border border-rose-200/60">
+                  This action cannot be undone. Any active tasks assigned to this employee will be marked as unassigned.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{deleting ? 'Deleting...' : 'Delete Employee'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

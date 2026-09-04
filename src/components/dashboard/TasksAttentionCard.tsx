@@ -32,12 +32,12 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
       };
       return rank(a) - rank(b);
     })
-    .slice(0, 5);
+    .slice(0, 4);
 
   return (
     <div
       id="card-tasks-requiring-attention"
-      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col"
+      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between"
     >
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
@@ -71,7 +71,7 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
               <div
                 key={task.id}
                 onClick={() => openTaskDetail(task.id)}
-                className="py-3 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                className="py-2 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

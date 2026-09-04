@@ -64,76 +64,61 @@ export const WorkloadCard: React.FC<WorkloadCardProps> = ({ users, tasks }) => {
         </button>
       </div>
 
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="text-slate-400 uppercase font-semibold border-b border-slate-100 pb-2">
-              <th className="py-2 font-semibold">Assignee</th>
-              <th className="py-2 text-center font-semibold">Active</th>
-              <th className="py-2 text-center font-semibold">Due Today</th>
-              <th className="py-2 text-center font-semibold">Overdue</th>
-              <th className="py-2 text-center font-semibold">Blocked</th>
-              <th className="py-2 text-center font-semibold">Completed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {workloadStats.map(({ user, active, dueToday, overdue, blocked, completed }) => (
-              <tr
-                key={user.id}
-                onClick={() => handleUserClick(user.id)}
-                className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
-                title={`Filter tasks for ${user.name}`}
-              >
-                <td className="py-2.5 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:text-blue-800 transition-colors">
-                      {user.initials}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
-                        {user.name}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate">{user.department}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-2.5 text-center font-bold text-slate-900">{active}</td>
-                <td className="py-2.5 text-center">
-                  {dueToday > 0 ? (
-                    <span className="font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-                      {dueToday}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">0</span>
-                  )}
-                </td>
-                <td className="py-2.5 text-center">
-                  {overdue > 0 ? (
-                    <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">
-                      {overdue}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">0</span>
-                  )}
-                </td>
-                <td className="py-2.5 text-center">
-                  {blocked > 0 ? (
-                    <span className="font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded">
-                      {blocked}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">0</span>
-                  )}
-                </td>
-                <td className="py-2.5 text-center font-semibold text-emerald-700">{completed}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-3 space-y-1.5 max-h-[360px] overflow-y-auto pr-0.5">
+        {workloadStats.map(({ user, active, dueToday, overdue, blocked }) => (
+          <div
+            key={user.id}
+            onClick={() => handleUserClick(user.id)}
+              className="p-2 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-slate-50/80 cursor-pointer transition-all duration-150 flex items-center justify-between gap-2.5 group"
+              title={`View ${user.name}'s task backlog`}
+            >
+              {/* Assignee Identity */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:text-blue-800 transition-colors">
+                  {user.initials}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                    {user.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {user.department || user.role}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status & Workload Badges */}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                {/* Urgent indicator tags */}
+                {blocked > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title={`${blocked} blocked`}>
+                    {blocked} blocked
+                  </span>
+                )}
+                {overdue > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={`${overdue} overdue`}>
+                    {overdue} overdue
+                  </span>
+                )}
+                {dueToday > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200" title={`${dueToday} due today`}>
+                    {dueToday} today
+                  </span>
+                )}
+
+                {/* Active workload count pill */}
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors">
+                  {active} active
+                </span>
+
+                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 transition-colors hidden sm:block" />
+              </div>
+            </div>
+          ))}
       </div>
 
       <div className="mt-3 pt-2 text-[11px] text-slate-400 text-center border-t border-slate-100">
-        Click any team member to view their dedicated task accountability backlog
+        Click any team member to view their live task deliverables
       </div>
     </div>
   );

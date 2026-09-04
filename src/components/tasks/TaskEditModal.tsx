@@ -15,7 +15,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectInput, setProjectInput] = useState('');
   const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [status, setStatus] = useState<TaskStatus>('NOT_STARTED');
@@ -32,7 +32,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
     if (task) {
       setTitle(task.title);
       setDescription(task.description);
-      setProjectId(task.projectId);
+      setProjectInput(`${task.projectName} (${task.clientName})`);
       setAssignedEmployeeId(task.assignedEmployeeId);
       setPriority(task.priority);
       setStatus(task.status);
@@ -62,8 +62,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
       setError('Task description is required.');
       return;
     }
-    if (!projectId) {
-      setError('Project selection is required.');
+    if (!projectInput.trim()) {
+      setError('Project & Client is required.');
       return;
     }
     if (!assignedEmployeeId) {
@@ -83,7 +83,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
     const res = await updateTaskMetadata(task.id, {
       title: title.trim(),
       description: description.trim(),
-      projectId,
+      projectId: projectInput.trim(),
       assignedEmployeeId,
       priority,
       status,
@@ -162,22 +162,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="edit-task-project" className="block font-bold text-slate-700 mb-1">
-                Project & Client <span className="text-rose-500">*</span>
+              <label htmlFor="edit-task-project-input" className="block font-bold text-slate-700 mb-1">
+                Project or Client
               </label>
-              <select
-                id="edit-task-project"
-                required
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+              <input
+                id="edit-task-project-input"
+                type="text"
+                // required
+                list="project-suggestions-edit"
+                placeholder="e.g. Phoenix Enterprise Cloud (Phoenix Financial)"
+                value={projectInput}
+                onChange={(e) => setProjectInput(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
+              />
+              <datalist id="project-suggestions-edit">
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.projectName} ({p.clientName})
+                  <option key={p.id} value={`${p.projectName} (${p.clientName})`}>
+                    {p.projectName}
                   </option>
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div>
