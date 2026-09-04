@@ -1,0 +1,120 @@
+import { Project, ProjectStatus, User } from '../types';
+import { storageService } from './storageService';
+import { authService } from './authService';
+
+class ProjectService {
+  public async getProjects(): Promise<Project[]> {
+    return storageService.getProjects();
+  }
+
+  public async getProjectById(id: string): Promise<Project | null> {
+    const projects = storageService.getProjects();
+    return projects.find((p) => p.id === id) || null;
+  }
+
+  public async createProject(
+    data: {
+      projectName: string;
+      clientName: string;
+      status: ProjectStatus;
+      description?: string;
+    },
+    actor: User
+  ): Promise<{ success: boolean; message: string; project?: Project }> {
+    if (!authService.canManageProjects(actor)) {
+      return { success: false, message: 'Unauthorized: Only Admins can create projects.' };
+    }
+
+    if (!data.projectName.trim()) return { success: false, message: 'Project name is required.' };
+    if (!data.clientName.trim()) return { success: false, message: 'Client name is required.' };
+
+    const projects = storageService.getProjects();
+    const newProject: Project = {
+      id: `proj-${Date.now()}`,
+      projectName: data.projectName.trim(),
+      clientName: data.clientName.trim(),
+      status: data.status,
+      description: data.description?.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    projects.push(newProject);
+    storageService.setProjects(projects);
+
+    return { success: true, message: `Project "${newProject.projectName}" created successfully.`, project: newProject };
+  }
+
+  public async updateProject(
+    id: string,
+    updates: Partial<Omit<Project, 'id' | 'createdAt'>>,
+    actor: User
+  ): Promise<{ success: boolean; message: string; project?: Project }> {
+    if (!authService.canManageProjects(actor)) {
+      return { success: false, message: 'Unauthorized: Only Admins can update project metadata.' };
+    }
+
+    const projects = storageService.getProjects();
+    const index = projects.findIndex((p) => p.id === id);
+    if (index === -1) return { success: false, message: 'Project not found.' };
+
+    const updated: Project = {
+      ...projects[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    projects[index] = updated;
+    storageService.setProjects(projects);
+
+    // If projectName or clientName changed, update associated tasks for denormalized consistency
+    if (updates.projectName || updates.clientName) {
+      const tasks = storageService.getTasks();
+      let tasksChanged = false;
+      const syncedTasks = tasks.map((t) => {
+        if (t.projectId === id) {
+          tasksChanged = true;
+          return {
+            ...t,
+            projectName: updates.projectName || t.projectName,
+            clientName: updates.clientName || t.clientName,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return t;
+      });
+      if (tasksChanged) {
+        storageService.setTasks(syncedTasks);
+      }
+    }
+
+    return { success: true, message: `Project updated successfully.`, project: updated };
+  }
+
+  public async deleteProject(
+    id: string,
+    actor: User
+  ): Promise<{ success: boolean; message: string }> {
+    if (!authService.canManageProjects(actor)) {
+      return { success: false, message: 'Unauthorized: Only Admins can delete projects.' };
+    }
+
+    // Safety guard: check for associated tasks
+    const tasks = storageService.getTasks();
+    const associatedTasks = tasks.filter((t) => t.projectId === id);
+    if (associatedTasks.length > 0) {
+      return {
+        success: false,
+        message: `Cannot delete project: ${associatedTasks.length} task(s) are currently associated with this project. Reassign or resolve these tasks first to prevent orphaned records.`,
+      };
+    }
+
+    const projects = storageService.getProjects();
+    const filtered = projects.filter((p) => p.id !== id);
+    storageService.setProjects(filtered);
+
+    return { success: true, message: 'Project deleted successfully.' };
+  }
+}
+
+export const projectService = new ProjectService();
