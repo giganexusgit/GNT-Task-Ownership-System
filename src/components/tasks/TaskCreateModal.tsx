@@ -237,8 +237,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
           {/* Mandatory Next Action */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
             <label htmlFor="task-next-action-input" className="block font-bold text-blue-950">
-              Immediate Next Action
-            </label>
+              Immediate Next Action<span className="text-rose-500">*</span> </label>
             <p className="text-[11px] text-blue-700">
               State the exact first physical or logical step the owner must take to begin.
             </p>
