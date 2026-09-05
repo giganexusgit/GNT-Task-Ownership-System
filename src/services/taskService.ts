@@ -516,9 +516,7 @@ class TaskService {
     const taskToDelete = tasks.find((t) => t.id === taskId);
     if (!taskToDelete) return { success: false, message: 'Task not found.' };
 
-    const remainingTasks = tasks.filter((t) => t.id !== taskId);
-    storageService.setTasks(remainingTasks);
-
+      storageService.deleteTask(taskId);
     await activityService.recordActivity({
       taskId,
       taskTitle: taskToDelete.title,
