@@ -109,6 +109,10 @@ interface AppContextType {
     active?: boolean;
   }) => Promise<{ success: boolean; message?: string }>;
 
+  updateUser: (
+    userId: string,
+    updates: Partial<Omit<User, 'id' | 'createdAt'>>
+  ) => Promise<{ success: boolean; message: string; user?: User }>;
   toggleUserActive: (userId: string) => Promise<{ success: boolean; message: string }>;
   resetUserPin: (userId: string, newPin: string) => Promise<{ success: boolean; message: string }>;
   changeUserRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; message: string; user?: User }>;
@@ -137,6 +141,46 @@ interface AppContextType {
   resetToDemoData: () => void;
 }
 
+const getInitialRoute = (): string => {
+  try {
+    if (typeof window !== 'undefined') {
+      if (window.location.hash && window.location.hash.startsWith('#/')) {
+        return window.location.hash.substring(1);
+      }
+      const saved = localStorage.getItem('gnt_active_route');
+      if (saved && saved.startsWith('/')) {
+        return saved;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed reading initial route', e);
+  }
+  return '/login';
+};
+
+const getDefaultRouteForRole = (role: UserRole): string => {
+  if (role === 'ADMIN') return '/admin/dashboard';
+  if (role === 'MANAGER') return '/manager/dashboard';
+  return '/employee/tasks';
+};
+
+const getAuthorizedRoute = (route: string, user: User | null): string => {
+  if (!user) return '/login';
+  if (!route || route === '/login') return getDefaultRouteForRole(user.role);
+
+  // Validate role-based routes
+  if (user.role === 'EMPLOYEE') {
+    if (route.startsWith('/admin') || route.startsWith('/manager')) {
+      return '/employee/tasks';
+    }
+  } else if (user.role === 'MANAGER') {
+    if (route.startsWith('/admin')) {
+      return '/manager/dashboard';
+    }
+  }
+  return route;
+};
+
 const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -147,14 +191,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activities, setActivities] = useState<TaskActivity[]>(() => storageService.getActivities());
   const [notifications, setNotifications] = useState<Notification[]>(() => storageService.getNotifications());
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [activeRoute, setActiveRoute] = useState<string>('/login');
+  const [activeRoute, setActiveRoute] = useState<string>(() => getInitialRoute());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [taskFilterState, setTaskFilterState] = useState<any>({
+  const [taskFilterState, setTaskFilterState] = useState<any>(() => ({
     status: 'ALL',
     priority: 'ALL',
     quickFilter: 'all',
     search: '',
-  });
+    dueDate: new Date().toISOString().split('T')[0],
+  }));
+
+  const updateRoute = useCallback((newRoute: string) => {
+    setActiveRoute(newRoute);
+    try {
+      localStorage.setItem('gnt_active_route', newRoute);
+      if (typeof window !== 'undefined' && window.location.hash !== `#${newRoute}`) {
+        window.history.replaceState(null, '', `#${newRoute}`);
+      }
+    } catch {}
+  }, []);
 
   const refreshAllState = useCallback(async () => {
     const allUsers = storageService.getUsers();
@@ -171,18 +226,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(allNotifs);
     setCurrentUser(curr);
 
-    // If logged in and route is login, route to default dashboard
     if (curr) {
       setActiveRoute((prev) => {
-        if (prev === '/login') {
-          if (curr.role === 'ADMIN') return '/admin/dashboard';
-          if (curr.role === 'MANAGER') return '/manager/dashboard';
-          return '/employee/tasks';
-        }
-        return prev;
+        const target = prev && prev !== '/login' ? prev : getInitialRoute();
+        const authorized = getAuthorizedRoute(target, curr);
+        try {
+          localStorage.setItem('gnt_active_route', authorized);
+          if (typeof window !== 'undefined' && window.location.hash !== `#${authorized}`) {
+            window.history.replaceState(null, '', `#${authorized}`);
+          }
+        } catch {}
+        return authorized;
       });
     } else {
       setActiveRoute('/login');
+      try {
+        localStorage.setItem('gnt_active_route', '/login');
+        if (typeof window !== 'undefined' && window.location.hash !== '#/login') {
+          window.history.replaceState(null, '', '#/login');
+        }
+      } catch {}
     }
   }, []);
 
@@ -198,6 +261,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       refreshAllState();
     });
 
+    // Handle browser back/forward or hash changes
+    const handleHashChange = () => {
+      if (typeof window !== 'undefined' && window.location.hash && window.location.hash.startsWith('#/')) {
+        const hashRoute = window.location.hash.substring(1);
+        setActiveRoute((prev) => {
+          if (prev !== hashRoute) {
+            try {
+              localStorage.setItem('gnt_active_route', hashRoute);
+            } catch {}
+            return hashRoute;
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+
     // Real-time Supabase postgres_changes listener
     const channel = supabase
       .channel('public:db-sync')
@@ -208,6 +289,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => {
       unsubscribe();
+      window.removeEventListener('hashchange', handleHashChange);
       supabase.removeChannel(channel);
     };
   }, [refreshAllState]);
@@ -239,9 +321,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Welcome, ${res.user.name} (${res.user.role} workspace active)`,
         'success'
       );
-      if (res.user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
-      else if (res.user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
-      else setActiveRoute('/employee/tasks');
+      updateRoute(getDefaultRouteForRole(res.user.role));
     } else {
       showToast('Authentication Failed', res.errorMessage || 'Invalid email or password', 'error');
     }
@@ -263,9 +343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Welcome to GNT Workboard, ${res.user.name}!`,
         'success'
       );
-      if (res.user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
-      else if (res.user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
-      else setActiveRoute('/employee/tasks');
+      updateRoute(getDefaultRouteForRole(res.user.role));
     } else {
       showToast('Registration Failed', res.errorMessage || 'Unable to create account', 'error');
     }
@@ -281,9 +359,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Welcome back, ${res.user.name} (${res.user.role} workspace active)`,
         'success'
       );
-      if (res.user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
-      else if (res.user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
-      else setActiveRoute('/employee/tasks');
+      updateRoute(getDefaultRouteForRole(res.user.role));
     } else {
       showToast('Authentication Failed', res.errorMessage || 'Invalid credentials or PIN entered', 'error');
     }
@@ -293,7 +369,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = async () => {
     await authService.logout();
     setCurrentUser(null);
-    setActiveRoute('/login');
+    updateRoute('/login');
     showToast('Signed Out Successfully', 'Your secure session has ended', 'info');
   };
 
@@ -306,9 +382,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `Now operating as ${user.name} (${user.role})`,
         'info'
       );
-      if (user.role === 'ADMIN') setActiveRoute('/admin/dashboard');
-      else if (user.role === 'MANAGER') setActiveRoute('/manager/dashboard');
-      else setActiveRoute('/employee/tasks');
+      updateRoute(getDefaultRouteForRole(user.role));
     }
   };
 
@@ -316,7 +390,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (filterParams) {
       setTaskFilterState((prev: any) => ({ ...prev, ...filterParams }));
     }
-    setActiveRoute(route);
+    updateRoute(route);
   };
 
   const openTaskDetail = (taskId: string) => {
@@ -425,6 +499,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('Team Member Added', res.message, 'success');
     } else {
       showToast('Account Creation Failed', res.message, 'error');
+    }
+    return res;
+  };
+
+  const updateUser = async (
+    userId: string,
+    updates: Partial<Omit<User, 'id' | 'createdAt'>>
+  ) => {
+    if (!currentUser) return { success: false, message: 'User not authenticated' };
+    const res = await userService.updateUser(userId, updates, currentUser);
+    if (res.success && res.user) {
+      showToast('Employee Updated Successfully', res.message, 'success');
+      if (currentUser.id === userId) {
+        setCurrentUser(res.user);
+      }
+    } else {
+      showToast('Update Failed', res.message, 'error');
     }
     return res;
   };
@@ -555,7 +646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetToDemoData = () => {
     storageService.resetToSeedData();
     showToast('Demo Environment Restored', 'All initial GNT enterprise demo data loaded', 'success');
-    setActiveRoute('/login');
+    updateRoute('/login');
   };
 
   const unreadNotificationCount = currentUser
@@ -592,6 +683,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTaskMetadata,
         deleteTask,
         createUser,
+        updateUser,
         toggleUserActive,
         resetUserPin,
         changeUserRole,

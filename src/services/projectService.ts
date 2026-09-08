@@ -109,9 +109,7 @@ class ProjectService {
       };
     }
 
-    const projects = storageService.getProjects();
-    const filtered = projects.filter((p) => p.id !== id);
-    storageService.setProjects(filtered);
+    storageService.deleteProject(id);
 
     return { success: true, message: 'Project deleted successfully.' };
   }

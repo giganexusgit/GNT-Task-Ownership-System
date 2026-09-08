@@ -89,6 +89,21 @@ export class SupabaseDbService {
 
   public async deleteUser(userId: string): Promise<boolean> {
     try {
+      // 1. Unassign user from tasks to avoid FK conflicts
+      await supabase
+        .from('tasks')
+        .update({ assigned_employee_id: null, assigned_employee_name: 'Unassigned' })
+        .eq('assigned_employee_id', userId);
+
+      await supabase
+        .from('tasks')
+        .update({ created_by_id: null })
+        .eq('created_by_id', userId);
+
+      // 2. Clean up notifications for user
+      await supabase.from('notifications').delete().eq('user_id', userId);
+
+      // 3. Delete user row
       const { error } = await supabase.from('users').delete().eq('id', userId);
       if (error) {
         console.error('Supabase deleteUser error:', error);
@@ -231,7 +246,7 @@ export class SupabaseDbService {
 
   public async upsertTask(task: Task): Promise<boolean> {
     try {
-      const payload = {
+      const payload: any = {
         id: task.id,
         title: task.title,
         description: task.description || '',
@@ -261,6 +276,18 @@ export class SupabaseDbService {
       };
       const { error } = await supabase.from('tasks').upsert(payload, { onConflict: 'id' });
       if (error) {
+        // If FK violation (e.g. invalid user/project reference), nullify FK fields and retry
+        if (error.code === '23503' || error.message?.includes('foreign key')) {
+          payload.project_id = null;
+          payload.assigned_employee_id = null;
+          payload.created_by_id = null;
+          const retry = await supabase.from('tasks').upsert(payload, { onConflict: 'id' });
+          if (retry.error) {
+            console.error('Supabase upsertTask retry error:', retry.error);
+            return false;
+          }
+          return true;
+        }
         console.error('Supabase upsertTask error:', error);
         return false;
       }
@@ -518,30 +545,124 @@ export class SupabaseDbService {
       let finalActivities = localData.activities;
       let finalNotifs = localData.notifications;
 
-      // If remote has data, merge/use remote
+      // Timestamp-aware Last-Write-Wins merge for users
       if (remoteUsers !== null) {
         if (remoteUsers.length > 0) {
-          finalUsers = remoteUsers;
+          const localMap = new Map(localData.users.map((u) => [u.id, u]));
+          const remoteMap = new Map(remoteUsers.map((u) => [u.id, u]));
+          const merged: User[] = [];
+          const toPush: User[] = [];
+
+          for (const rUser of remoteUsers) {
+            const lUser = localMap.get(rUser.id);
+            if (!lUser) {
+              merged.push(rUser);
+            } else {
+              const lTime = new Date(lUser.updatedAt || lUser.createdAt || 0).getTime();
+              const rTime = new Date(rUser.updatedAt || rUser.createdAt || 0).getTime();
+              if (lTime > rTime) {
+                merged.push(lUser);
+                toPush.push(lUser);
+              } else {
+                merged.push(rUser);
+              }
+            }
+          }
+
+          for (const lUser of localData.users) {
+            if (!remoteMap.has(lUser.id)) {
+              merged.push(lUser);
+              toPush.push(lUser);
+            }
+          }
+
+          finalUsers = merged;
+          if (toPush.length > 0) {
+            this.upsertUsers(toPush).catch(() => {});
+          }
         } else if (localData.users.length > 0) {
-          // Push local users to Supabase
           await this.upsertUsers(localData.users);
         }
       }
 
+      // Timestamp-aware Last-Write-Wins merge for projects
       if (remoteProjects !== null) {
         if (remoteProjects.length > 0) {
-          finalProjects = remoteProjects;
+          const localMap = new Map(localData.projects.map((p) => [p.id, p]));
+          const remoteMap = new Map(remoteProjects.map((p) => [p.id, p]));
+          const merged: Project[] = [];
+          const toPush: Project[] = [];
+
+          for (const rProj of remoteProjects) {
+            const lProj = localMap.get(rProj.id);
+            if (!lProj) {
+              merged.push(rProj);
+            } else {
+              const lTime = new Date(lProj.updatedAt || lProj.createdAt || 0).getTime();
+              const rTime = new Date(rProj.updatedAt || rProj.createdAt || 0).getTime();
+              if (lTime > rTime) {
+                merged.push(lProj);
+                toPush.push(lProj);
+              } else {
+                merged.push(rProj);
+              }
+            }
+          }
+
+          for (const lProj of localData.projects) {
+            if (!remoteMap.has(lProj.id)) {
+              merged.push(lProj);
+              toPush.push(lProj);
+            }
+          }
+
+          finalProjects = merged;
+          if (toPush.length > 0) {
+            this.upsertProjects(toPush).catch(() => {});
+          }
         } else if (localData.projects.length > 0) {
-          // Push local projects to Supabase
           await this.upsertProjects(localData.projects);
         }
       }
 
+      // Timestamp-aware Last-Write-Wins merge for tasks
       if (remoteTasks !== null) {
         if (remoteTasks.length > 0) {
-          finalTasks = remoteTasks;
+          const localMap = new Map(localData.tasks.map((t) => [t.id, t]));
+          const remoteMap = new Map(remoteTasks.map((t) => [t.id, t]));
+          const merged: Task[] = [];
+          const toPush: Task[] = [];
+
+          for (const rTask of remoteTasks) {
+            const lTask = localMap.get(rTask.id);
+            if (!lTask) {
+              merged.push(rTask);
+            } else {
+              const lTime = new Date(lTask.updatedAt || lTask.createdAt || 0).getTime();
+              const rTime = new Date(rTask.updatedAt || rTask.createdAt || 0).getTime();
+              if (lTime > rTime) {
+                merged.push(lTask);
+                toPush.push(lTask);
+              } else {
+                merged.push(rTask);
+              }
+            }
+          }
+
+          for (const lTask of localData.tasks) {
+            if (!remoteMap.has(lTask.id)) {
+              merged.push(lTask);
+              toPush.push(lTask);
+            }
+          }
+
+          finalTasks = merged;
+          if (toPush.length > 0) {
+            for (const t of toPush) {
+              this.upsertTask(t).catch(() => {});
+            }
+          }
         } else if (localData.tasks.length > 0) {
-          // Push local tasks to Supabase
           await this.upsertTasks(localData.tasks);
         }
       }

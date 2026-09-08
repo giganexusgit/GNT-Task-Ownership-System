@@ -52,11 +52,11 @@ class StorageService {
 
   public resetToSeedData(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(SEED_USERS));
-      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(SEED_PROJECTS));
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(SEED_TASKS));
-      localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(SEED_ACTIVITIES));
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(SEED_NOTIFICATIONS));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(SEED_USERS || []));
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(SEED_PROJECTS || []));
+      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(SEED_TASKS || []));
+      localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(SEED_ACTIVITIES || []));
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(SEED_NOTIFICATIONS || []));
       localStorage.setItem(
         STORAGE_KEYS.SETTINGS,
         JSON.stringify({
@@ -82,8 +82,10 @@ class StorageService {
   public getItem<T>(key: string, defaultValue: T): T {
     try {
       const raw = localStorage.getItem(key);
-      if (!raw) return defaultValue;
-      return JSON.parse(raw) as T;
+      if (!raw || raw === 'undefined' || raw === 'null') return defaultValue;
+      const parsed = JSON.parse(raw) as T;
+      if (parsed === undefined || parsed === null) return defaultValue;
+      return parsed;
     } catch (err) {
       console.warn(`Failed to parse storage key ${key}, falling back to default`, err);
       return defaultValue;
@@ -101,7 +103,7 @@ class StorageService {
 
   // ==================== USERS ====================
   public getUsers(): User[] {
-    return this.getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS);
+    return this.getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS || []);
   }
 
   public setUsers(users: User[], syncCloud = true): void {
@@ -131,7 +133,7 @@ class StorageService {
 
   // ==================== PROJECTS ====================
   public getProjects(): Project[] {
-    return this.getItem<Project[]>(STORAGE_KEYS.PROJECTS, SEED_PROJECTS);
+    return this.getItem<Project[]>(STORAGE_KEYS.PROJECTS, SEED_PROJECTS || []);
   }
 
   public setProjects(projects: Project[], syncCloud = true): void {
@@ -161,7 +163,7 @@ class StorageService {
 
   // ==================== TASKS ====================
   public getTasks(): Task[] {
-    return this.getItem<Task[]>(STORAGE_KEYS.TASKS, SEED_TASKS);
+    return this.getItem<Task[]>(STORAGE_KEYS.TASKS, SEED_TASKS || []);
   }
 
   public setTasks(tasks: Task[], syncCloud = true): void {
@@ -191,7 +193,7 @@ class StorageService {
 
   // ==================== ACTIVITIES ====================
   public getActivities(): TaskActivity[] {
-    return this.getItem<TaskActivity[]>(STORAGE_KEYS.ACTIVITIES, SEED_ACTIVITIES);
+    return this.getItem<TaskActivity[]>(STORAGE_KEYS.ACTIVITIES, SEED_ACTIVITIES || []);
   }
 
   public setActivities(activities: TaskActivity[], syncCloud = true): void {
@@ -210,7 +212,7 @@ class StorageService {
 
   // ==================== NOTIFICATIONS ====================
   public getNotifications(): Notification[] {
-    return this.getItem<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, SEED_NOTIFICATIONS);
+    return this.getItem<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, SEED_NOTIFICATIONS || []);
   }
 
   public setNotifications(notifications: Notification[], syncCloud = true): void {

@@ -178,21 +178,45 @@ class UserService {
       updatedAt: new Date().toISOString(),
     };
 
-    if (updates.name) {
+    if (updates.name && updates.name !== users[targetIndex].name) {
       updatedUser.initials = updates.name
         .split(' ')
         .filter(Boolean)
         .map((part) => part[0].toUpperCase())
         .slice(0, 2)
         .join('');
+
+      // Also update tasks assigned to or created by this user
+      const tasks = storageService.getTasks();
+      let tasksChanged = false;
+      const syncedTasks = tasks.map((t) => {
+        let changed = false;
+        let newT = { ...t };
+        if (t.assignedEmployeeId === userId) {
+          newT.assignedEmployeeName = updates.name!;
+          changed = true;
+        }
+        if (t.createdById === userId) {
+          newT.createdByName = updates.name!;
+          changed = true;
+        }
+        if (changed) {
+          tasksChanged = true;
+          newT.updatedAt = new Date().toISOString();
+        }
+        return newT;
+      });
+      if (tasksChanged) {
+        storageService.setTasks(syncedTasks);
+      }
     }
 
     users[targetIndex] = updatedUser;
-    storageService.setUsers(users);
+    storageService.saveUser(updatedUser);
 
     const message = updates.role
       ? `Role for ${updatedUser.name} changed to ${updates.role}.`
-      : 'User updated successfully.';
+      : 'Employee details updated successfully.';
 
     return { success: true, message, user: updatedUser };
   }
@@ -220,9 +244,6 @@ class UserService {
       }
     }
 
-    const updatedUsers = users.filter((u) => u.id !== userId);
-    storageService.setUsers(updatedUsers);
-
     // Also update any tasks assigned to this employee to 'Unassigned'
     const tasks = storageService.getTasks();
     let tasksModified = false;
@@ -241,6 +262,9 @@ class UserService {
     if (tasksModified) {
       storageService.setTasks(updatedTasks);
     }
+
+    // Delete user from local storage and Supabase cloud DB
+    storageService.deleteUser(userId);
 
     return { success: true, message: `Employee "${targetUser.name}" has been permanently deleted.` };
   }

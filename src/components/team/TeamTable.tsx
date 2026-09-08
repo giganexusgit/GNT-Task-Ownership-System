@@ -14,17 +14,20 @@ import {
   ShieldAlert,
   Trash2,
   FileBarChart2,
+  Edit2,
   X,
 } from 'lucide-react';
 
 interface TeamTableProps {
   onOpenAddUser: () => void;
+  onOpenEditUser: (user: User) => void;
   onOpenResetPin: (user: User) => void;
   onOpenChangeRole: (user: User) => void;
 }
 
 export const TeamTable: React.FC<TeamTableProps> = ({
   onOpenAddUser,
+  onOpenEditUser,
   onOpenResetPin,
   onOpenChangeRole,
 }) => {
@@ -193,6 +196,16 @@ export const TeamTable: React.FC<TeamTableProps> = ({
                     {canManageUsers && (
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            id={`btn-edit-user-${u.id}`}
+                            onClick={() => onOpenEditUser(u)}
+                            title="Edit Employee Information"
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-slate-600" />
+                            <span className="text-[11px] font-semibold">Edit</span>
+                          </button>
+
                           <button
                             id={`btn-reset-pin-${u.id}`}
                             onClick={() => onOpenResetPin(u)}

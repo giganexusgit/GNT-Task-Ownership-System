@@ -275,7 +275,7 @@ class TaskService {
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.setTasks(tasks);
+    storageService.saveTask(updatedTask);
 
     // Record specific activities
     if (updates.status && updates.status !== currentTask.status) {
@@ -451,7 +451,7 @@ class TaskService {
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.setTasks(tasks);
+    storageService.saveTask(updatedTask);
 
     // Track activity for reassignment
     if (isReassigned) {

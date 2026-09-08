@@ -22,6 +22,7 @@ import { TaskEditModal } from './components/tasks/TaskEditModal';
 import { TaskDetailDrawer } from './components/tasks/TaskDetailDrawer';
 import { ProjectModal } from './components/projects/ProjectModal';
 import { AddUserModal } from './components/team/AddUserModal';
+import { EditUserModal } from './components/team/EditUserModal';
 import { ResetPinModal } from './components/team/ResetPinModal';
 import { ChangeRoleModal } from './components/team/ChangeRoleModal';
 import { ToastContainer } from './components/ui/ToastContainer';
@@ -61,8 +62,9 @@ const MainAppLayout: React.FC = () => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedProjectForEdit, setSelectedProjectForEdit] = useState<Project | null>(null);
 
-  // User modal
+  // User modals
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<User | null>(null);
   const [selectedUserForResetPin, setSelectedUserForResetPin] = useState<User | null>(null);
   const [selectedUserForChangeRole, setSelectedUserForChangeRole] = useState<User | null>(null);
 
@@ -190,6 +192,7 @@ const MainAppLayout: React.FC = () => {
           {activeRoute === '/admin/team' && (
             <TeamTable
               onOpenAddUser={() => setIsAddUserModalOpen(true)}
+              onOpenEditUser={(u) => setSelectedUserForEdit(u)}
               onOpenResetPin={(u) => setSelectedUserForResetPin(u)}
               onOpenChangeRole={(u) => setSelectedUserForChangeRole(u)}
             />
@@ -224,6 +227,7 @@ const MainAppLayout: React.FC = () => {
           {activeRoute === '/manager/team' && (
             <TeamTable
               onOpenAddUser={() => setIsAddUserModalOpen(true)}
+              onOpenEditUser={(u) => setSelectedUserForEdit(u)}
               onOpenResetPin={(u) => setSelectedUserForResetPin(u)}
               onOpenChangeRole={(u) => setSelectedUserForChangeRole(u)}
             />
@@ -282,6 +286,12 @@ const MainAppLayout: React.FC = () => {
       <AddUserModal
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
+      />
+
+      <EditUserModal
+        user={selectedUserForEdit}
+        isOpen={!!selectedUserForEdit}
+        onClose={() => setSelectedUserForEdit(null)}
       />
 
       <ResetPinModal

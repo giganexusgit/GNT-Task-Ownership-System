@@ -65,7 +65,23 @@ export const TaskTable: React.FC<TaskTableProps> = ({
   };
 
   const handleQuickFilterChange = (quickFilter: string) => {
-    setTaskFilterState((prev: any) => ({ ...prev, quickFilter }));
+    setTaskFilterState((prev: any) => {
+      if (quickFilter === 'overdue' || quickFilter === 'blocked') {
+        return { ...prev, quickFilter, dueDate: '' };
+      }
+      if (quickFilter === 'today') {
+        return { ...prev, quickFilter, dueDate: todayStr };
+      }
+      return { ...prev, quickFilter };
+    });
+  };
+
+  const handleDateFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTaskFilterState((prev: any) => ({ ...prev, dueDate: e.target.value }));
+  };
+
+  const handleClearDateFilter = () => {
+    setTaskFilterState((prev: any) => ({ ...prev, dueDate: '' }));
   };
 
   const handleResetFilters = () => {
@@ -76,8 +92,9 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       employeeId: '',
       projectId: '',
       search: '',
+      dueDate: todayStr,
     });
-    showToast('Filters Cleared', 'Task view reset to default filter criteria', 'info');
+    showToast('Filters Cleared', 'Task view reset to today’s deliverables', 'info');
   };
 
   // Filter tasks based on current filter state
@@ -92,6 +109,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
         t.assignedEmployeeName.toLowerCase().includes(q) ||
         t.nextAction.toLowerCase().includes(q);
       if (!match) return false;
+    }
+
+    if (taskFilterState.dueDate && taskFilterState.dueDate.trim()) {
+      if (t.dueDate !== taskFilterState.dueDate) return false;
     }
 
     if (taskFilterState.status && taskFilterState.status !== 'ALL') {
@@ -110,20 +131,29 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (t.projectId !== taskFilterState.projectId) return false;
     }
 
-    if (taskFilterState.quickFilter) {
-      if (taskFilterState.quickFilter === 'today' && (t.dueDate !== todayStr || t.status === 'DONE')) {
+    const currentQuickFilter = taskFilterState.quickFilter || 'all';
+    if (currentQuickFilter === 'all') {
+      if (t.status === 'DONE' && taskFilterState.status !== 'DONE') {
         return false;
       }
-      if (taskFilterState.quickFilter === 'overdue' && (t.dueDate >= todayStr || t.status === 'DONE')) {
+    } else if (currentQuickFilter === 'today') {
+      if (t.dueDate !== todayStr || t.status === 'DONE') {
         return false;
       }
-      if (taskFilterState.quickFilter === 'upcoming' && (t.dueDate <= todayStr || t.status === 'DONE')) {
+    } else if (currentQuickFilter === 'overdue') {
+      if (t.dueDate >= todayStr || t.status === 'DONE') {
         return false;
       }
-      if (taskFilterState.quickFilter === 'blocked' && t.status !== 'BLOCKED') {
+    } else if (currentQuickFilter === 'upcoming') {
+      if (t.dueDate <= todayStr || t.status === 'DONE') {
         return false;
       }
-      if (taskFilterState.quickFilter === 'completed' && t.status !== 'DONE') {
+    } else if (currentQuickFilter === 'blocked') {
+      if (t.status !== 'BLOCKED') {
+        return false;
+      }
+    } else if (currentQuickFilter === 'completed') {
+      if (t.status !== 'DONE') {
         return false;
       }
     }
@@ -133,12 +163,16 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const canManageTask = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
+  const baseTasksForCount = taskFilterState.dueDate
+    ? tasks.filter((t) => t.dueDate === taskFilterState.dueDate)
+    : tasks;
+
   const quickFilterTabs = [
-    { id: 'all', label: 'All Tasks', count: tasks.length },
+    { id: 'all', label: 'All Tasks', count: baseTasksForCount.filter((t) => t.status !== 'DONE').length },
     { id: 'today', label: 'Due Today', count: tasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length },
     { id: 'overdue', label: 'Overdue', count: tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length },
-    { id: 'blocked', label: 'Blocked', count: tasks.filter((t) => t.status === 'BLOCKED').length },
-    { id: 'completed', label: 'Completed', count: tasks.filter((t) => t.status === 'DONE').length },
+    { id: 'blocked', label: 'Blocked', count: baseTasksForCount.filter((t) => t.status === 'BLOCKED').length },
+    { id: 'completed', label: 'Completed', count: baseTasksForCount.filter((t) => t.status === 'DONE').length },
   ];
 
   return (
@@ -192,8 +226,43 @@ export const TaskTable: React.FC<TaskTableProps> = ({
           />
         </div>
 
-        {/* Dropdown Filters */}
+        {/* Dropdown & Date Filters */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Date Filter */}
+          <div className="relative flex items-center gap-1">
+            <div className="relative flex items-center">
+              <Calendar className="w-3.5 h-3.5 text-blue-600 absolute left-2.5 pointer-events-none" />
+              <input
+                id="input-filter-date"
+                type="date"
+                value={taskFilterState.dueDate || ''}
+                onChange={handleDateFilterChange}
+                title="Filter by deadline / date"
+                className="pl-8 pr-2 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+              />
+              {taskFilterState.dueDate && (
+                <button
+                  type="button"
+                  onClick={handleClearDateFilter}
+                  title="Clear date filter (show all dates)"
+                  className="ml-1 px-1.5 py-0.5 text-slate-400 hover:text-slate-700 text-xs font-bold rounded hover:bg-slate-100"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {taskFilterState.dueDate !== todayStr && (
+              <button
+                type="button"
+                onClick={() => setTaskFilterState((prev: any) => ({ ...prev, dueDate: todayStr }))}
+                title="Set to today's date"
+                className="px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors"
+              >
+                Today
+              </button>
+            )}
+          </div>
+
           {/* Status filter */}
           <select
             id="select-filter-status"
@@ -238,8 +307,8 @@ export const TaskTable: React.FC<TaskTableProps> = ({
             ))}
           </select>
 
-          {/* Employee filter (only if not strictly employee personal view) */}
-          {!isEmployeeView && (
+          {/* Employee filter (only visible for Admins and Managers) */}
+          {!isEmployeeView && currentUser?.role !== 'EMPLOYEE' && (
             <select
               id="select-filter-employee"
               value={taskFilterState.employeeId || ''}
@@ -259,6 +328,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
           {/* Reset Filters button */}
           {(taskFilterState.search ||
+            taskFilterState.dueDate ||
             taskFilterState.status !== 'ALL' ||
             taskFilterState.priority !== 'ALL' ||
             taskFilterState.employeeId ||
