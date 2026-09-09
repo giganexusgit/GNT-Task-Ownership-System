@@ -66,13 +66,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const handleQuickFilterChange = (quickFilter: string) => {
     setTaskFilterState((prev: any) => {
-      if (quickFilter === 'overdue' || quickFilter === 'blocked') {
-        return { ...prev, quickFilter, dueDate: '' };
-      }
       if (quickFilter === 'today') {
         return { ...prev, quickFilter, dueDate: todayStr };
       }
-      return { ...prev, quickFilter };
+      return { ...prev, quickFilter, dueDate: '' };
     });
   };
 
@@ -92,9 +89,9 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       employeeId: '',
       projectId: '',
       search: '',
-      dueDate: todayStr,
+      dueDate: '',
     });
-    showToast('Filters Cleared', 'Task view reset to today’s deliverables', 'info');
+    showToast('Filters Cleared', 'Task view reset to all active deliverables', 'info');
   };
 
   // Filter tasks based on current filter state
@@ -163,16 +160,30 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const canManageTask = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
-  const baseTasksForCount = taskFilterState.dueDate
-    ? tasks.filter((t) => t.dueDate === taskFilterState.dueDate)
-    : tasks;
+  // Base tasks for badge counts, respecting employee/project/search filters
+  const contextFilteredTasks = tasks.filter((t) => {
+    if (taskFilterState.search && taskFilterState.search.trim()) {
+      const q = taskFilterState.search.toLowerCase().trim();
+      const match =
+        t.title.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.projectName.toLowerCase().includes(q) ||
+        t.clientName.toLowerCase().includes(q) ||
+        t.assignedEmployeeName.toLowerCase().includes(q) ||
+        t.nextAction.toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    if (taskFilterState.employeeId && t.assignedEmployeeId !== taskFilterState.employeeId) return false;
+    if (taskFilterState.projectId && t.projectId !== taskFilterState.projectId) return false;
+    return true;
+  });
 
   const quickFilterTabs = [
-    { id: 'all', label: 'All Tasks', count: baseTasksForCount.filter((t) => t.status !== 'DONE').length },
-    { id: 'today', label: 'Due Today', count: tasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length },
-    { id: 'overdue', label: 'Overdue', count: tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length },
-    { id: 'blocked', label: 'Blocked', count: baseTasksForCount.filter((t) => t.status === 'BLOCKED').length },
-    { id: 'completed', label: 'Completed', count: baseTasksForCount.filter((t) => t.status === 'DONE').length },
+    { id: 'all', label: 'All Tasks', count: contextFilteredTasks.filter((t) => t.status !== 'DONE').length },
+    { id: 'today', label: 'Due Today', count: contextFilteredTasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length },
+    { id: 'overdue', label: 'Overdue', count: contextFilteredTasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length },
+    { id: 'blocked', label: 'Blocked', count: contextFilteredTasks.filter((t) => t.status === 'BLOCKED').length },
+    { id: 'completed', label: 'Completed', count: contextFilteredTasks.filter((t) => t.status === 'DONE').length },
   ];
 
   return (

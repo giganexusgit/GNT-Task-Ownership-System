@@ -9,7 +9,6 @@ import {
   ChevronDown,
   UserCheck,
   Calendar,
-  ExternalLink,
 } from 'lucide-react';
 
 interface TopbarProps {
@@ -266,12 +265,12 @@ export const Topbar: React.FC<TopbarProps> = ({
           )}
         </div>
 
-        {/* Primary "+ Create Task" Action (Admin/Manager) */}
+        {/* Primary "+ Create Task" Action (Admin/Manager Desktop) */}
         {canCreateTask && (
           <button
             id="btn-topbar-create-task"
             onClick={onOpenCreateTask}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors"
+            className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Create Task</span>

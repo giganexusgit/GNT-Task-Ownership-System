@@ -28,6 +28,9 @@ import { ChangeRoleModal } from './components/team/ChangeRoleModal';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { Task, Project, User } from './types';
 
+import { DraggableCreateTaskFAB } from './components/navigation/DraggableCreateTaskFAB';
+import { authService } from './services/authService';
+
 const MainAppLayout: React.FC = () => {
   const { currentUser, activeRoute, tasks } = useApp();
 
@@ -305,6 +308,11 @@ const MainAppLayout: React.FC = () => {
         isOpen={!!selectedUserForChangeRole}
         onClose={() => setSelectedUserForChangeRole(null)}
       />
+
+      {/* Mobile Draggable Floating Action Button */}
+      {authService.canCreateTask(currentUser) && (
+        <DraggableCreateTaskFAB onClick={() => setIsCreateTaskOpen(true)} />
+      )}
 
       {/* Toast notifications container */}
       <ToastContainer />

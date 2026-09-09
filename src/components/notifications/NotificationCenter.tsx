@@ -9,6 +9,8 @@ import {
   Clock,
   ShieldAlert,
   ArrowRight,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 export const NotificationCenter: React.FC = () => {
@@ -17,6 +19,8 @@ export const NotificationCenter: React.FC = () => {
     currentUser,
     markNotificationRead,
     markAllNotificationsRead,
+    deleteNotification,
+    clearNotifications,
     openTaskDetail,
   } = useApp();
 
@@ -24,6 +28,7 @@ export const NotificationCenter: React.FC = () => {
 
   if (!currentUser) return null;
 
+  // Strict user scoping ensures each user only sees notifications assigned directly to them
   let userNotifs = notifications.filter((n) => n.userId === currentUser.id);
 
   if (filterUnreadOnly) {
@@ -31,6 +36,8 @@ export const NotificationCenter: React.FC = () => {
   }
 
   const unreadCount = notifications.filter((n) => n.userId === currentUser.id && !n.read).length;
+  const hasReadNotifs = notifications.some((n) => n.userId === currentUser.id && n.read);
+  const totalUserNotifsCount = notifications.filter((n) => n.userId === currentUser.id).length;
 
   const handleNotificationClick = (id: string, taskId?: string) => {
     markNotificationRead(id);
@@ -39,12 +46,17 @@ export const NotificationCenter: React.FC = () => {
     }
   };
 
+  const handleDeleteItem = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteNotification(id);
+  };
+
   return (
     <div className="space-y-4 max-w-4xl">
       {/* Header bar */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+          <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
             <Bell className="w-5 h-5" />
           </div>
           <div>
@@ -55,25 +67,59 @@ export const NotificationCenter: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          {/* Button 1: Filter Unread Toggle */}
           <button
+            type="button"
+            id="btn-notif-filter-unread"
             onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               filterUnreadOnly
-                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
             }`}
           >
             {filterUnreadOnly ? 'Showing Unread' : 'Filter Unread'}
           </button>
 
+          {/* Button 2: Mark All Read */}
           {unreadCount > 0 && (
             <button
+              type="button"
+              id="btn-notif-mark-all-read"
               onClick={() => markAllNotificationsRead()}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <CheckCheck className="w-3.5 h-3.5 text-slate-500" />
+              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span>Mark all read</span>
+            </button>
+          )}
+
+          {/* Button 3a: Clear Read */}
+          {hasReadNotifs && (
+            <button
+              type="button"
+              id="btn-notif-clear-read"
+              onClick={() => clearNotifications(true)}
+              title="Clear all read notifications"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+              <span>Clear Read</span>
+            </button>
+          )}
+
+          {/* Button 3b: Clear All */}
+          {totalUserNotifsCount > 0 && (
+            <button
+              type="button"
+              id="btn-notif-clear-all"
+              onClick={() => clearNotifications(false)}
+              title="Clear all notifications"
+              className="px-2.5 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 text-rose-500" />
+              <span>Clear All</span>
             </button>
           )}
         </div>
@@ -114,7 +160,7 @@ export const NotificationCenter: React.FC = () => {
               <div
                 key={n.id}
                 onClick={() => handleNotificationClick(n.id, n.taskId)}
-                className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3.5 ${
+                className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3.5 group relative ${
                   !n.read ? 'bg-blue-50/30' : ''
                 }`}
               >
@@ -122,7 +168,7 @@ export const NotificationCenter: React.FC = () => {
                   <Icon className="w-4 h-4" />
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-6">
                   <div className="flex items-baseline justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold text-slate-900">{n.title}</h4>
@@ -149,6 +195,16 @@ export const NotificationCenter: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Individual Dismiss Button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteItem(e, n.id)}
+                  title="Dismiss notification"
+                  className="absolute right-3 top-3.5 p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             );
           })}
