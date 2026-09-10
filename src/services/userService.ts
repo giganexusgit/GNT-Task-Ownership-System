@@ -1,6 +1,7 @@
 import { User, UserRole } from '../types';
 import { storageService } from './storageService';
 import { authService } from './authService';
+import { supabase } from './supabaseClient';
 
 class UserService {
   public async getUsers(): Promise<User[]> {
@@ -133,9 +134,37 @@ class UserService {
     const target = users.find((u) => u.id === userId);
     if (!target) return { success: false, message: 'User not found.' };
 
-    target.pin = newPin;
-    target.updatedAt = new Date().toISOString();
-    storageService.setUsers(users);
+    const targetEmail = target.email.toLowerCase().trim();
+
+    // 1. Sync Supabase Auth Cloud Password (auth.users) for active user
+    if (actor.id === userId || (targetEmail && actor.email.toLowerCase().trim() === targetEmail)) {
+      try {
+        const cloudPassword = cleanPin.length >= 6 ? cleanPin : `${cleanPin}00`;
+        await supabase.auth.updateUser({ password: cloudPassword });
+      } catch (e) {
+        console.warn('Supabase auth updateUser password warning:', e);
+      }
+    }
+
+    // 2. Sync public.users database record in Supabase
+    try {
+      await supabase.from('users').update({
+        pin: cleanPin,
+        updated_at: new Date().toISOString()
+      }).eq('id', userId);
+    } catch (e) {
+      console.warn('Supabase public.users update pin warning:', e);
+    }
+
+    // 3. Update local storage user records
+    users.forEach((u) => {
+      if (u.id === userId || u.email.toLowerCase().trim() === targetEmail) {
+        u.pin = cleanPin;
+        u.updatedAt = new Date().toISOString();
+      }
+    });
+
+    await storageService.setUsers(users);
 
     return { success: true, message: `PIN for ${target.name} reset successfully.` };
   }
@@ -264,7 +293,7 @@ class UserService {
     }
 
     // Delete user from local storage and Supabase cloud DB
-    storageService.deleteUser(userId);
+    await storageService.deleteUser(userId);
 
     return { success: true, message: `Employee "${targetUser.name}" has been permanently deleted.` };
   }

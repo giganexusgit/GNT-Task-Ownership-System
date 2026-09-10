@@ -375,6 +375,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   <th className="py-3 px-4 font-semibold">Task & Project</th>
                   <th className="py-3 px-3 font-semibold">Owner</th>
                   <th className="py-3 px-3 font-semibold">Priority</th>
+                  <th className="py-3 px-3 font-semibold">Assigned Date</th>
                   <th className="py-3 px-3 font-semibold">Deadline</th>
                   <th className="py-3 px-3 font-semibold">Status</th>
                   <th className="py-3 px-3 font-semibold">Progress</th>
@@ -441,6 +442,13 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                       {/* Priority */}
                       <td className="py-3 px-3">
                         <PriorityBadge priority={task.priority} />
+                      </td>
+
+                      {/* Assigned Date */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="font-medium text-slate-600">
+                          {task.createdAt ? task.createdAt.split('T')[0] : 'N/A'}
+                        </span>
                       </td>
 
                       {/* Due Date */}

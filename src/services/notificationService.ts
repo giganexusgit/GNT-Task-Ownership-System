@@ -97,23 +97,28 @@ class NotificationService {
     const clearedKeys = storageService.getClearedOverdueKeys();
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Step 1: Purge any existing duplicate notifications from storage (same userId + taskId + type)
+    // Step 1: Purge any existing duplicate notifications and orphan notifications for deleted tasks
+    const activeTaskIds = new Set(tasks.map((t) => t.id));
     const seenMap = new Set<string>();
-    const deduplicatedNotifs: Notification[] = [];
-    let hadDuplicates = false;
+    const validNotifs: Notification[] = [];
+    let hadChanges = false;
 
     for (const n of notifications) {
+      if (n.taskId && !activeTaskIds.has(n.taskId)) {
+        hadChanges = true;
+        continue;
+      }
       const key = `${n.userId}_${n.taskId || 'general'}_${n.type}`;
       if (!seenMap.has(key)) {
         seenMap.add(key);
-        deduplicatedNotifs.push(n);
+        validNotifs.push(n);
       } else {
-        hadDuplicates = true;
+        hadChanges = true;
       }
     }
 
-    if (hadDuplicates) {
-      notifications = deduplicatedNotifs;
+    if (hadChanges) {
+      notifications = validNotifs;
       storageService.setNotifications(notifications);
     }
 

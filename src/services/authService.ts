@@ -259,19 +259,22 @@ class AuthService {
       };
     }
 
-    // Exact PIN match or Supabase auth verification
-    const isMatch = user.pin === cleanPin;
+    // Re-verify against latest stored users array in case of recent PIN reset
+    const freshUsers = storageService.getUsers();
+    const freshUser = freshUsers.find((u) => u.id === user.id) || user;
+    const isMatch = freshUser.pin === cleanPin;
 
     if (!isMatch) {
-      // Also try cloud auth if PIN is a password
+      // Also check if PIN is entered as 6-digit cloud password format (cleanPin or cleanPin + '00')
       try {
+        const cloudPassword = cleanPin.length >= 6 ? cleanPin : `${cleanPin}00`;
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: cleanPin,
+          email: freshUser.email,
+          password: cloudPassword,
         });
         if (!error && data.user) {
-          storageService.setSession({ userId: user.id });
-          return { success: true, user };
+          storageService.setSession({ userId: freshUser.id });
+          return { success: true, user: freshUser };
         }
       } catch {
         // continue to error

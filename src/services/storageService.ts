@@ -107,10 +107,14 @@ class StorageService {
     return this.getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS || []);
   }
 
-  public setUsers(users: User[], syncCloud = true): void {
+  public async setUsers(users: User[], syncCloud = true): Promise<void> {
     this.setItem(STORAGE_KEYS.USERS, users);
     if (syncCloud) {
-      supabaseDb.upsertUsers(users).catch((e) => console.warn('Supabase sync users error:', e));
+      try {
+        await supabaseDb.upsertUsers(users);
+      } catch (e) {
+        console.warn('Supabase sync users error:', e);
+      }
     }
   }
 
@@ -126,10 +130,14 @@ class StorageService {
     supabaseDb.upsertUser(user).catch((e) => console.warn('Supabase save user error:', e));
   }
 
-  public deleteUser(userId: string): void {
+  public async deleteUser(userId: string): Promise<void> {
     const users = this.getUsers().filter((u) => u.id !== userId);
     this.setItem(STORAGE_KEYS.USERS, users);
-    supabaseDb.deleteUser(userId).catch((e) => console.warn('Supabase delete user error:', e));
+    try {
+      await supabaseDb.deleteUser(userId);
+    } catch (e) {
+      console.warn('Supabase delete user error:', e);
+    }
   }
 
   // ==================== PROJECTS ====================
@@ -189,6 +197,18 @@ class StorageService {
   public deleteTask(taskId: string): void {
     const tasks = this.getTasks().filter((t) => t.id !== taskId);
     this.setItem(STORAGE_KEYS.TASKS, tasks);
+
+    // Cascade delete related notifications
+    const notifications = this.getNotifications().filter((n) => n.taskId !== taskId);
+    this.setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
+
+    // Cascade delete related activities
+    const activities = this.getActivities().filter((a) => a.taskId !== taskId);
+    this.setItem(STORAGE_KEYS.ACTIVITIES, activities);
+
+    // Notify all subscribers of immediate state change
+    this.notify();
+
     supabaseDb.deleteTask(taskId).catch((e) => console.warn('Supabase delete task error:', e));
   }
 

@@ -209,27 +209,27 @@ const SupabaseSettingsCard: React.FC = () => {
 
   return (
     <div className="p-5 rounded-2xl bg-white border border-emerald-200/80 shadow-xs space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-slate-900">Supabase Cloud Database</h3>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase">
                 Active & Configured
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-mono">https://rshefuocexrhiklqqfkx.supabase.co</p>
+            <p className="text-xs text-slate-500 font-mono break-all">https://rshefuocexrhiklqqfkx.supabase.co</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={runSync}
             disabled={syncing}
-            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="flex-1 sm:flex-none justify-center px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             {syncing ? (
               <span>Syncing Cloud...</span>
@@ -244,7 +244,7 @@ const SupabaseSettingsCard: React.FC = () => {
           <button
             onClick={runTest}
             disabled={testing}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="flex-1 sm:flex-none justify-center px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             {testing ? (
               <span>Testing Connection...</span>
@@ -292,23 +292,23 @@ const SupabaseSettingsCard: React.FC = () => {
         </div>
       )}
 
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between gap-4">
+      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-slate-800">PostgreSQL Schema Migrations</p>
           <p className="text-[11px] text-slate-500">
             Includes SQL DDL for <code>users</code>, <code>projects</code>, <code>tasks</code>, <code>activities</code>, and <code>notifications</code>.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
           <button
             onClick={() => setShowSchema(!showSchema)}
-            className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors"
+            className="flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors flex items-center"
           >
             {showSchema ? 'Hide SQL' : 'View SQL'}
           </button>
           <button
             onClick={copySchema}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 text-xs font-semibold transition-colors flex items-center gap-1"
+            className="flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 text-xs font-semibold transition-colors flex items-center gap-1"
           >
             <FileCode className="w-3.5 h-3.5" />
             <span>{copiedSchema ? 'Copied!' : 'Copy SQL Schema'}</span>

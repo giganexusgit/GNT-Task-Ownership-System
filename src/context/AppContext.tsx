@@ -200,7 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     priority: 'ALL',
     quickFilter: 'all',
     search: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: '',
   }));
 
   const updateRoute = useCallback((newRoute: string) => {
@@ -471,6 +471,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetTask = tasks.find((t) => t.id === taskId);
     const res = await taskService.deleteTask(taskId, currentUser);
     if (res.success) {
+      await refreshAllState();
       showToast(
         'Task Deleted Successfully',
         targetTask ? `"${targetTask.title}" was permanently removed from project` : res.message,
@@ -539,6 +540,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetUser = users.find((u) => u.id === userId);
     const res = await userService.resetPin(userId, newPin, currentUser);
     if (res.success) {
+      await refreshAllState();
       showToast(
         'Security PIN Reset Successfully',
         targetUser ? `PIN updated for ${targetUser.name}` : res.message,
@@ -570,6 +572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await userService.deleteUser(userId, currentUser);
     if (res.success) {
       showToast('Employee Deleted', res.message, 'success');
+      await refreshAllState();
     } else {
       showToast('Delete Failed', res.message, 'error');
     }
