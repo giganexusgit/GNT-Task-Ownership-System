@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   TASKS: 'gnt_tasks',
   ACTIVITIES: 'gnt_task_activity',
   NOTIFICATIONS: 'gnt_notifications',
+  CLEARED_OVERDUE: 'gnt_cleared_overdue_notifs',
   SESSION: 'gnt_session',
   SETTINGS: 'gnt_settings',
   INITIALIZED: 'gnt_workboard_fresh_v1',
@@ -339,6 +340,23 @@ class StorageService {
   public importFullBackup(jsonString: string): boolean {
     const res = this.importAllData(jsonString);
     return res.success;
+  }
+
+  // ==================== CLEARED OVERDUE REGISTRY ====================
+  public getClearedOverdueKeys(): string[] {
+    return this.getItem<string[]>(STORAGE_KEYS.CLEARED_OVERDUE, []);
+  }
+
+  public addClearedOverdueKey(key: string): void {
+    const keys = this.getClearedOverdueKeys();
+    if (!keys.includes(key)) {
+      keys.push(key);
+      this.setItem(STORAGE_KEYS.CLEARED_OVERDUE, keys);
+    }
+  }
+
+  public clearClearedOverdueKeys(): void {
+    this.setItem(STORAGE_KEYS.CLEARED_OVERDUE, []);
   }
 }
 

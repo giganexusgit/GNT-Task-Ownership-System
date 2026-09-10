@@ -415,8 +415,11 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             {(isMine || canManage) && (
               <button
                 id="btn-drawer-quick-update"
-                onClick={() => onOpenEmployeeUpdate(task)}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+                onClick={() => {
+                  closeTaskDetail();
+                  onOpenEmployeeUpdate(task);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Update Status & Progress</span>
               </button>
@@ -425,8 +428,11 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             {canManage && (
               <button
                 id="btn-drawer-edit-task"
-                onClick={() => onOpenEditTask(task)}
-                className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5"
+                onClick={() => {
+                  closeTaskDetail();
+                  onOpenEditTask(task);
+                }}
+                className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit2 className="w-3.5 h-3.5" />
                 <span>Configure</span>

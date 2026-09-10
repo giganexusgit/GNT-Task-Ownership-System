@@ -136,6 +136,8 @@ interface AppContextType {
   // Notification Actions
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearNotifications: (readOnly?: boolean) => Promise<void>;
 
   // System Actions
   resetToDemoData: () => void;
@@ -212,6 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const refreshAllState = useCallback(async () => {
+    await notificationService.syncOverdueNotifications();
     const allUsers = storageService.getUsers();
     const allProjects = storageService.getProjects();
     const allTasks = storageService.getTasks();
@@ -313,14 +316,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const signInWithEmail = async (email: string, password: string): Promise<LoginResult> => {
+    setToasts([]);
     const res = await authService.signInWithEmail(email, password);
     if (res.success && res.user) {
       setCurrentUser(res.user);
-      showToast(
-        'Signed In Successfully',
-        `Welcome, ${res.user.name} (${res.user.role} workspace active)`,
-        'success'
-      );
       updateRoute(getDefaultRouteForRole(res.user.role));
     } else {
       showToast('Authentication Failed', res.errorMessage || 'Invalid email or password', 'error');
@@ -335,6 +334,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     role: UserRole;
     department?: string;
   }): Promise<LoginResult> => {
+    setToasts([]);
     const res = await authService.signUpWithEmail(data);
     if (res.success && res.user) {
       setCurrentUser(res.user);
@@ -351,14 +351,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = async (userId: string, pin: string): Promise<LoginResult> => {
+    setToasts([]);
     const res = await authService.login(userId, pin);
     if (res.success && res.user) {
       setCurrentUser(res.user);
-      showToast(
-        'Signed In Successfully',
-        `Welcome back, ${res.user.name} (${res.user.role} workspace active)`,
-        'success'
-      );
       updateRoute(getDefaultRouteForRole(res.user.role));
     } else {
       showToast('Authentication Failed', res.errorMessage || 'Invalid credentials or PIN entered', 'error');
@@ -367,6 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
+    setToasts([]);
     await authService.logout();
     setCurrentUser(null);
     updateRoute('/login');
@@ -374,6 +371,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchUser = async (userId: string) => {
+    setToasts([]);
     const user = await authService.switchUser(userId);
     if (user) {
       setCurrentUser(user);
@@ -628,7 +626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Notification Actions
   const markNotificationRead = async (id: string) => {
     await notificationService.markAsRead(id);
-    showToast('Notification Read', 'Notice marked as acknowledged', 'info');
+    refreshAllState();
   };
 
   const markAllNotificationsRead = async () => {
@@ -636,10 +634,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const count = unreadNotificationCount;
       await notificationService.markAllAsRead(currentUser.id);
       showToast(
-        'All Notifications Cleared',
+        'All Notifications Read',
         `${count} notice${count === 1 ? '' : 's'} marked as read`,
         'info'
       );
+      refreshAllState();
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    await notificationService.deleteNotification(id);
+    refreshAllState();
+  };
+
+  const clearNotifications = async (readOnly: boolean = false) => {
+    if (currentUser) {
+      await notificationService.clearNotifications(currentUser.id, readOnly);
+      showToast(
+        'Notifications Cleared',
+        readOnly ? 'Cleared read notifications' : 'Cleared all notifications',
+        'info'
+      );
+      refreshAllState();
     }
   };
 
@@ -693,6 +709,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteProject,
         markNotificationRead,
         markAllNotificationsRead,
+        deleteNotification,
+        clearNotifications,
         resetToDemoData,
       }}
     >
