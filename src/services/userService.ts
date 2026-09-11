@@ -1,11 +1,8 @@
 import { User, UserRole } from '../types';
 import { storageService } from './storageService';
 import { authService } from './authService';
-<<<<<<< HEAD
 import { supabase } from './supabaseClient';
-=======
 import { generateId } from '../utils/idUtils';
->>>>>>> origin/main
 
 class UserService {
   public async getUsers(): Promise<User[]> {

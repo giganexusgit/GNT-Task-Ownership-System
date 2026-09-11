@@ -153,15 +153,6 @@ class StorageService {
     }
   }
 
-<<<<<<< HEAD
-  public async deleteUser(userId: string): Promise<void> {
-    const users = this.getUsers().filter((u) => u.id !== userId);
-    this.setItem(STORAGE_KEYS.USERS, users);
-    try {
-      await supabaseDb.deleteUser(userId);
-    } catch (e) {
-      console.warn('Supabase delete user error:', e);
-=======
   public async deleteUser(userId: string): Promise<boolean> {
     const users = this.getUsers().filter((u) => u.id !== userId);
     this.setItem(STORAGE_KEYS.USERS, users);
@@ -170,7 +161,6 @@ class StorageService {
     } catch (e) {
       console.warn('Supabase delete user error:', e);
       return false;
->>>>>>> origin/main
     }
   }
 
@@ -246,28 +236,12 @@ class StorageService {
   public async deleteTask(taskId: string): Promise<boolean> {
     const tasks = this.getTasks().filter((t) => t.id !== taskId);
     this.setItem(STORAGE_KEYS.TASKS, tasks);
-<<<<<<< HEAD
-
-    // Cascade delete related notifications
-    const notifications = this.getNotifications().filter((n) => n.taskId !== taskId);
-    this.setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
-
-    // Cascade delete related activities
-    const activities = this.getActivities().filter((a) => a.taskId !== taskId);
-    this.setItem(STORAGE_KEYS.ACTIVITIES, activities);
-
-    // Notify all subscribers of immediate state change
-    this.notify();
-
-    supabaseDb.deleteTask(taskId).catch((e) => console.warn('Supabase delete task error:', e));
-=======
     try {
       return await supabaseDb.deleteTask(taskId);
     } catch (e) {
       console.warn('Supabase delete task error:', e);
       return false;
     }
->>>>>>> origin/main
   }
 
   // ==================== ACTIVITIES ====================
