@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Task, Project, TaskActivity, Notification, TaskStatus, TaskPriority, ProjectStatus, UserRole } from '../types';
+import { formatLocalDateDisplay, getLocalDateString } from '../utils/dateUtils';
 import { storageService } from '../services/storageService';
 import { authService, LoginResult } from '../services/authService';
 import { supabase } from '../services/supabaseClient';
@@ -200,7 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     priority: 'ALL',
     quickFilter: 'all',
     search: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: getLocalDateString(),
   }));
 
   const updateRoute = useCallback((newRoute: string) => {
@@ -282,15 +283,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     window.addEventListener('hashchange', handleHashChange);
 
-    // Real-time Supabase postgres_changes listener
+    // Real-time Supabase postgres_changes listener with debouncing
+    let syncTimeout: any = null;
     const channel = supabase
       .channel('public:db-sync')
       .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        storageService.syncWithSupabase();
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+          storageService.syncWithSupabase();
+        }, 350);
       })
       .subscribe();
 
     return () => {
+      if (syncTimeout) clearTimeout(syncTimeout);
       unsubscribe();
       window.removeEventListener('hashchange', handleHashChange);
       supabase.removeChannel(channel);
@@ -569,6 +575,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser) return { success: false, message: 'User not authenticated' };
     const res = await userService.deleteUser(userId, currentUser);
     if (res.success) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setTasks(storageService.getTasks());
       showToast('Employee Deleted', res.message, 'success');
     } else {
       showToast('Delete Failed', res.message, 'error');

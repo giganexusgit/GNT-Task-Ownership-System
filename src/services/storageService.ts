@@ -97,8 +97,26 @@ class StorageService {
     try {
       localStorage.setItem(key, JSON.stringify(value));
       this.notify();
-    } catch (err) {
-      console.error(`Failed to set storage key ${key}`, err);
+    } catch (err: any) {
+      console.warn(`Storage setItem warning for key "${key}":`, err);
+      // QuotaExceededError recovery: if tasks collection exceeds quota due to attachments,
+      // strip dataUrl binaries from local cache while preserving metadata
+      if (key === STORAGE_KEYS.TASKS && Array.isArray(value)) {
+        try {
+          const sanitizedTasks = (value as Task[]).map((t) => ({
+            ...t,
+            attachments: (t.attachments || []).map((att) => ({
+              ...att,
+              dataUrl: undefined, // remove heavy base64 from local cache to prevent quota crash
+            })),
+          }));
+          localStorage.setItem(key, JSON.stringify(sanitizedTasks));
+          this.notify();
+          return;
+        } catch (recoveryErr) {
+          console.error('Failed recovery storage setItem after quota error', recoveryErr);
+        }
+      }
     }
   }
 
@@ -114,7 +132,7 @@ class StorageService {
     }
   }
 
-  public saveUser(user: User): void {
+  public async saveUser(user: User): Promise<boolean> {
     const users = this.getUsers();
     const idx = users.findIndex((u) => u.id === user.id || u.email.toLowerCase() === user.email.toLowerCase());
     if (idx >= 0) {
@@ -123,13 +141,23 @@ class StorageService {
       users.push(user);
     }
     this.setItem(STORAGE_KEYS.USERS, users);
-    supabaseDb.upsertUser(user).catch((e) => console.warn('Supabase save user error:', e));
+    try {
+      return await supabaseDb.upsertUser(user);
+    } catch (e) {
+      console.warn('Supabase save user error:', e);
+      return false;
+    }
   }
 
-  public deleteUser(userId: string): void {
+  public async deleteUser(userId: string): Promise<boolean> {
     const users = this.getUsers().filter((u) => u.id !== userId);
     this.setItem(STORAGE_KEYS.USERS, users);
-    supabaseDb.deleteUser(userId).catch((e) => console.warn('Supabase delete user error:', e));
+    try {
+      return await supabaseDb.deleteUser(userId);
+    } catch (e) {
+      console.warn('Supabase delete user error:', e);
+      return false;
+    }
   }
 
   // ==================== PROJECTS ====================
@@ -144,7 +172,7 @@ class StorageService {
     }
   }
 
-  public saveProject(project: Project): void {
+  public async saveProject(project: Project): Promise<boolean> {
     const projects = this.getProjects();
     const idx = projects.findIndex((p) => p.id === project.id);
     if (idx >= 0) {
@@ -153,13 +181,23 @@ class StorageService {
       projects.unshift(project);
     }
     this.setItem(STORAGE_KEYS.PROJECTS, projects);
-    supabaseDb.upsertProject(project).catch((e) => console.warn('Supabase save project error:', e));
+    try {
+      return await supabaseDb.upsertProject(project);
+    } catch (e) {
+      console.warn('Supabase save project error:', e);
+      return false;
+    }
   }
 
-  public deleteProject(projectId: string): void {
+  public async deleteProject(projectId: string): Promise<boolean> {
     const projects = this.getProjects().filter((p) => p.id !== projectId);
     this.setItem(STORAGE_KEYS.PROJECTS, projects);
-    supabaseDb.deleteProject(projectId).catch((e) => console.warn('Supabase delete project error:', e));
+    try {
+      return await supabaseDb.deleteProject(projectId);
+    } catch (e) {
+      console.warn('Supabase delete project error:', e);
+      return false;
+    }
   }
 
   // ==================== TASKS ====================
@@ -174,7 +212,7 @@ class StorageService {
     }
   }
 
-  public saveTask(task: Task): void {
+  public async saveTask(task: Task): Promise<boolean> {
     const tasks = this.getTasks();
     const idx = tasks.findIndex((t) => t.id === task.id);
     if (idx >= 0) {
@@ -183,13 +221,23 @@ class StorageService {
       tasks.unshift(task);
     }
     this.setItem(STORAGE_KEYS.TASKS, tasks);
-    supabaseDb.upsertTask(task).catch((e) => console.warn('Supabase save task error:', e));
+    try {
+      return await supabaseDb.upsertTask(task);
+    } catch (e) {
+      console.warn('Supabase save task error:', e);
+      return false;
+    }
   }
 
-  public deleteTask(taskId: string): void {
+  public async deleteTask(taskId: string): Promise<boolean> {
     const tasks = this.getTasks().filter((t) => t.id !== taskId);
     this.setItem(STORAGE_KEYS.TASKS, tasks);
-    supabaseDb.deleteTask(taskId).catch((e) => console.warn('Supabase delete task error:', e));
+    try {
+      return await supabaseDb.deleteTask(taskId);
+    } catch (e) {
+      console.warn('Supabase delete task error:', e);
+      return false;
+    }
   }
 
   // ==================== ACTIVITIES ====================

@@ -6,6 +6,7 @@ import { TasksAttentionCard } from '../../components/dashboard/TasksAttentionCar
 import { WorkloadCard } from '../../components/dashboard/WorkloadCard';
 import { ProjectProgressCard } from '../../components/dashboard/ProjectProgressCard';
 import { RecentActivityCard } from '../../components/dashboard/RecentActivityCard';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   CheckSquare,
   Clock,
@@ -18,7 +19,7 @@ import {
 
 export const AdminDashboard: React.FC = () => {
   const { tasks, users, projects, activities, navigateTo } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   // Derived counts
   const totalTasks = tasks.length;
@@ -56,7 +57,7 @@ export const AdminDashboard: React.FC = () => {
           id="kpi-due-today"
           label="Due Today"
           value={dueTodayTasks}
-          subtext="Sep 04 deadlines"
+          subtext="Today's deadlines"
           icon={Calendar}
           colorScheme="amber"
           isUrgent={dueTodayTasks > 0}
@@ -89,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
           id="kpi-completed-tasks"
           label="Completed"
           value={completedTasks}
-          subtext="Delivered deliverables"
+          subtext="Delivered work"
           icon={CheckCircle2}
           colorScheme="emerald"
           onClick={() => navigateTo('/admin/tasks', { quickFilter: 'completed' })}

@@ -3,6 +3,8 @@ import { storageService } from './storageService';
 import { authService } from './authService';
 import { activityService } from './activityService';
 import { notificationService } from './notificationService';
+import { getLocalDateString } from '../utils/dateUtils';
+import { generateId } from '../utils/idUtils';
 
 export interface TaskFilterOptions {
   search?: string;
@@ -16,7 +18,7 @@ export interface TaskFilterOptions {
 class TaskService {
   public async getTasks(filter?: TaskFilterOptions): Promise<Task[]> {
     let tasks = storageService.getTasks();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
 
     if (!filter) {
       return tasks.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -139,7 +141,7 @@ class TaskService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      storageService.saveProject(project);
+      await storageService.saveProject(project);
     }
 
     // if (!project) return { success: false, message: 'Project or Client is required.' };
@@ -151,7 +153,7 @@ class TaskService {
     }
 
     const newTask: Task = {
-      id: `task-${Date.now()}`,
+      id: generateId('task'),
       title: data.title.trim(),
       description: data.description.trim(),
       projectId: project.id,
@@ -275,7 +277,7 @@ class TaskService {
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.saveTask(updatedTask);
+    await storageService.saveTask(updatedTask);
 
     // Record specific activities
     if (updates.status && updates.status !== currentTask.status) {
@@ -387,25 +389,6 @@ class TaskService {
             `${p.projectName} (${p.clientName})`.toLowerCase() === cleanInput.toLowerCase()
         );
       }
-      if (!proj && cleanInput) {
-        let pName = cleanInput;
-        let cName = 'Internal Ops';
-        const match = cleanInput.match(/^(.*?)\s*\((.*?)\)$/);
-        if (match) {
-          pName = match[1].trim();
-          cName = match[2].trim();
-        }
-        proj = {
-          id: `proj-${Date.now()}`,
-          projectName: pName,
-          clientName: cName,
-          status: 'ACTIVE',
-          description: `Project for task: ${currentTask.title}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        storageService.saveProject(proj);
-      }
       if (proj) {
         newProjectName = proj.projectName;
         newClientName = proj.clientName;
@@ -451,7 +434,7 @@ class TaskService {
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.saveTask(updatedTask);
+    await storageService.saveTask(updatedTask);
 
     // Track activity for reassignment
     if (isReassigned) {
@@ -516,7 +499,7 @@ class TaskService {
     const taskToDelete = tasks.find((t) => t.id === taskId);
     if (!taskToDelete) return { success: false, message: 'Task not found.' };
 
-      storageService.deleteTask(taskId);
+    await storageService.deleteTask(taskId);
     await activityService.recordActivity({
       taskId,
       taskTitle: taskToDelete.title,

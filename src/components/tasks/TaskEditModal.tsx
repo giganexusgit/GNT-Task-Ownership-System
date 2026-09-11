@@ -15,7 +15,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectInput, setProjectInput] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [status, setStatus] = useState<TaskStatus>('NOT_STARTED');
@@ -32,7 +32,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
     if (task) {
       setTitle(task.title);
       setDescription(task.description);
-      setProjectInput(`${task.projectName} (${task.clientName})`);
+      setProjectId(task.projectId || '');
       setAssignedEmployeeId(task.assignedEmployeeId);
       setPriority(task.priority);
       setStatus(task.status);
@@ -62,8 +62,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
       setError('Task description is required.');
       return;
     }
-    if (!projectInput.trim()) {
-      setError('Project & Client is required.');
+    if (!projectId.trim()) {
+      setError('Project selection is required.');
       return;
     }
     if (!assignedEmployeeId) {
@@ -83,7 +83,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
     const res = await updateTaskMetadata(task.id, {
       title: title.trim(),
       description: description.trim(),
-      projectId: projectInput.trim(),
+      projectId: projectId.trim(),
       assignedEmployeeId,
       priority,
       status,
@@ -132,56 +132,57 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
             </div>
           )}
 
+          {/* Title */}
           <div>
             <label htmlFor="edit-task-title" className="block font-bold text-slate-700 mb-1">
-              Title <span className="text-rose-500">*</span>
+              Task Deliverable Title <span className="text-rose-500">*</span>
             </label>
             <input
               id="edit-task-title"
               type="text"
               required
+              placeholder="e.g. Implement Multi-tenant Schema Architecture"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
             />
           </div>
 
+          {/* Description */}
           <div>
             <label htmlFor="edit-task-description" className="block font-bold text-slate-700 mb-1">
-              Description <span className="text-rose-500">*</span>
+              Detailed Scope & Context <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="edit-task-description"
               rows={3}
               required
+              placeholder="Describe requirements, acceptance criteria, constraints..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="edit-task-project-input" className="block font-bold text-slate-700 mb-1">
-                Project or Client
+              <label htmlFor="edit-task-project-select" className="block font-bold text-slate-700 mb-1">
+                Project or Client <span className="text-rose-500">*</span>
               </label>
-              <input
-                id="edit-task-project-input"
-                type="text"
-                // required
-                list="project-suggestions-edit"
-                placeholder="e.g. Phoenix Enterprise Cloud (Phoenix Financial)"
-                value={projectInput}
-                onChange={(e) => setProjectInput(e.target.value)}
+              <select
+                id="edit-task-project-select"
+                required
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              />
-              <datalist id="project-suggestions-edit">
+              >
+                <option value="">Select a Project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={`${p.projectName} (${p.clientName})`}>
-                    {p.projectName}
+                  <option key={p.id} value={p.id}>
+                    {p.projectName} ({p.clientName})
                   </option>
                 ))}
-              </datalist>
+              </select>
             </div>
 
             <div>

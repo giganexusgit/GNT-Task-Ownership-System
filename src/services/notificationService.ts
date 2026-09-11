@@ -1,7 +1,12 @@
 import { Notification } from '../types';
 import { storageService } from './storageService';
+import { getLocalDateString } from '../utils/dateUtils';
+import { generateId } from '../utils/idUtils';
 
 class NotificationService {
+  private lastOverdueSyncTimestamp = 0;
+  private lastOverdueSyncDate = '';
+
   public async getNotifications(userId: string): Promise<Notification[]> {
     const list = storageService.getNotifications();
     return list
@@ -42,7 +47,7 @@ class NotificationService {
   ): Promise<Notification> {
     const list = storageService.getNotifications();
     const newNotif: Notification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateId('notif'),
       userId: data.userId,
       type: data.type,
       title: data.title,
@@ -90,12 +95,21 @@ class NotificationService {
     }
   }
 
-  public async syncOverdueNotifications(): Promise<void> {
+  public async syncOverdueNotifications(force = false): Promise<void> {
+    const now = Date.now();
+    const todayStr = getLocalDateString();
+
+    // 10-minute cooldown throttle unless forced or calendar date changed
+    if (!force && this.lastOverdueSyncDate === todayStr && now - this.lastOverdueSyncTimestamp < 10 * 60 * 1000) {
+      return;
+    }
+    this.lastOverdueSyncTimestamp = now;
+    this.lastOverdueSyncDate = todayStr;
+
     const tasks = storageService.getTasks();
     const users = storageService.getUsers();
     let notifications = storageService.getNotifications();
     const clearedKeys = storageService.getClearedOverdueKeys();
-    const todayStr = new Date().toISOString().split('T')[0];
 
     // Step 1: Purge any existing duplicate notifications from storage (same userId + taskId + type)
     const seenMap = new Set<string>();

@@ -1,6 +1,7 @@
 import { User, UserRole } from '../types';
 import { storageService } from './storageService';
 import { authService } from './authService';
+import { generateId } from '../utils/idUtils';
 
 class UserService {
   public async getUsers(): Promise<User[]> {
@@ -59,7 +60,7 @@ class UserService {
       .join('');
 
     const newUser: User = {
-      id: `user-${Date.now()}`,
+      id: generateId('user'),
       name: userData.name.trim(),
       email: userData.email.toLowerCase().trim(),
       role: userData.role,
@@ -212,7 +213,7 @@ class UserService {
     }
 
     users[targetIndex] = updatedUser;
-    storageService.saveUser(updatedUser);
+    await storageService.saveUser(updatedUser);
 
     const message = updates.role
       ? `Role for ${updatedUser.name} changed to ${updates.role}.`
@@ -264,7 +265,7 @@ class UserService {
     }
 
     // Delete user from local storage and Supabase cloud DB
-    storageService.deleteUser(userId);
+    await storageService.deleteUser(userId);
 
     return { success: true, message: `Employee "${targetUser.name}" has been permanently deleted.` };
   }

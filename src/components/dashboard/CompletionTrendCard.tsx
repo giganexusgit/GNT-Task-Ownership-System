@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Task } from '../../types';
 import { TrendingUp, CheckCircle, Clock, ShieldAlert, Target, Award } from 'lucide-react';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface CompletionTrendCardProps {
   tasks: Task[];
@@ -8,7 +9,7 @@ interface CompletionTrendCardProps {
 
 export const CompletionTrendCard: React.FC<CompletionTrendCardProps> = ({ tasks }) => {
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
-  const todayStr = '2026-09-04';
+  const todayStr = getLocalDateString();
 
   // Derive weekly milestones for September 2026
   const weeks = [

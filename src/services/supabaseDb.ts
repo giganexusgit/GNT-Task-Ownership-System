@@ -97,14 +97,14 @@ export class SupabaseDbService {
 
       await supabase
         .from('tasks')
-        .update({ created_by_id: null })
+        .update({ created_by_id: null, created_by_name: 'Former Staff' })
         .eq('created_by_id', userId);
 
       // 2. Clean up notifications for user
       await supabase.from('notifications').delete().eq('user_id', userId);
 
       // 3. Delete user row
-      const { error } = await supabase.from('users').delete().eq('id', userId);
+      const { data, error } = await supabase.from('users').delete().eq('id', userId).select();
       if (error) {
         console.error('Supabase deleteUser error:', error);
         return false;
@@ -549,7 +549,6 @@ export class SupabaseDbService {
       if (remoteUsers !== null) {
         if (remoteUsers.length > 0) {
           const localMap = new Map(localData.users.map((u) => [u.id, u]));
-          const remoteMap = new Map(remoteUsers.map((u) => [u.id, u]));
           const merged: User[] = [];
           const toPush: User[] = [];
 
@@ -569,19 +568,17 @@ export class SupabaseDbService {
             }
           }
 
-          for (const lUser of localData.users) {
-            if (!remoteMap.has(lUser.id)) {
-              merged.push(lUser);
-              toPush.push(lUser);
-            }
-          }
-
+          // Note: We do NOT push missing local users back to remote.
+          // If a user was deleted on Supabase, local cache must accept the deletion, not revive it.
           finalUsers = merged;
           if (toPush.length > 0) {
             this.upsertUsers(toPush).catch(() => {});
           }
         } else if (localData.users.length > 0) {
+          // If remote is completely empty on initial setup, we sync local
           await this.upsertUsers(localData.users);
+        } else {
+          finalUsers = [];
         }
       }
 
@@ -589,7 +586,6 @@ export class SupabaseDbService {
       if (remoteProjects !== null) {
         if (remoteProjects.length > 0) {
           const localMap = new Map(localData.projects.map((p) => [p.id, p]));
-          const remoteMap = new Map(remoteProjects.map((p) => [p.id, p]));
           const merged: Project[] = [];
           const toPush: Project[] = [];
 
@@ -609,19 +605,15 @@ export class SupabaseDbService {
             }
           }
 
-          for (const lProj of localData.projects) {
-            if (!remoteMap.has(lProj.id)) {
-              merged.push(lProj);
-              toPush.push(lProj);
-            }
-          }
-
+          // Note: We do NOT push missing local projects back to remote.
           finalProjects = merged;
           if (toPush.length > 0) {
             this.upsertProjects(toPush).catch(() => {});
           }
         } else if (localData.projects.length > 0) {
           await this.upsertProjects(localData.projects);
+        } else {
+          finalProjects = [];
         }
       }
 
@@ -629,7 +621,6 @@ export class SupabaseDbService {
       if (remoteTasks !== null) {
         if (remoteTasks.length > 0) {
           const localMap = new Map(localData.tasks.map((t) => [t.id, t]));
-          const remoteMap = new Map(remoteTasks.map((t) => [t.id, t]));
           const merged: Task[] = [];
           const toPush: Task[] = [];
 
@@ -649,13 +640,7 @@ export class SupabaseDbService {
             }
           }
 
-          for (const lTask of localData.tasks) {
-            if (!remoteMap.has(lTask.id)) {
-              merged.push(lTask);
-              toPush.push(lTask);
-            }
-          }
-
+          // Note: We do NOT push missing local tasks back to remote.
           finalTasks = merged;
           if (toPush.length > 0) {
             for (const t of toPush) {
@@ -664,6 +649,8 @@ export class SupabaseDbService {
           }
         } else if (localData.tasks.length > 0) {
           await this.upsertTasks(localData.tasks);
+        } else {
+          finalTasks = [];
         }
       }
 

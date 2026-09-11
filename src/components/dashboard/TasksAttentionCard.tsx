@@ -3,6 +3,7 @@ import { Task } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../ui/StatusBadge';
 import { AlertCircle, Clock, ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface TasksAttentionCardProps {
   tasks: Task[];
@@ -10,7 +11,7 @@ interface TasksAttentionCardProps {
 
 export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks }) => {
   const { openTaskDetail, navigateTo, currentUser } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   // Prioritize: Blocked, Overdue, Due Today, Review
   const attentionTasks = tasks
@@ -37,29 +38,31 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
   return (
     <div
       id="card-tasks-requiring-attention"
-      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between"
+      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between"
     >
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
-            <ShieldAlert className="w-4 h-4 stroke-[2]" />
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <span className="p-2 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-600 shadow-2xs">
+            <ShieldAlert className="w-4 h-4 stroke-[2.2]" />
           </span>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Tasks Requiring Attention</h3>
-            <p className="text-xs text-slate-500">Early blocker detection & critical deadline warnings</p>
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight">Tasks Requiring Attention</h3>
+            <p className="text-[11px] text-slate-500">Early blocker detection & critical deadline warnings</p>
           </div>
         </div>
 
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">
+        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200/70 text-rose-700">
           {attentionTasks.length} Urgent Item{attentionTasks.length === 1 ? '' : 's'}
         </span>
       </div>
 
-      <div className="mt-3 divide-y divide-slate-100">
+      <div className="mt-3 divide-y divide-slate-100/90">
         {attentionTasks.length === 0 ? (
-          <div className="py-8 text-center">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-800">All deliverables on track</p>
+          <div className="py-10 text-center">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2.5 border border-emerald-200/60">
+              <CheckCircle2 className="w-5 h-5 stroke-[2]" />
+            </div>
+            <p className="text-xs font-bold text-slate-800">All deliverables on track</p>
             <p className="text-[11px] text-slate-400 mt-0.5">No overdue, blocked, or high-risk tasks right now</p>
           </div>
         ) : (
@@ -71,20 +74,20 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
               <div
                 key={task.id}
                 onClick={() => openTaskDetail(task.id)}
-                className="py-2 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                className="py-3 px-2.5 rounded-xl hover:bg-slate-50/80 cursor-pointer transition-all duration-150 group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                       <StatusBadge status={task.status} size="sm" />
                       <PriorityBadge priority={task.priority} />
                       {isOverdue && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200/60">
                           OVERDUE ({task.dueDate})
                         </span>
                       )}
                       {!isOverdue && task.dueDate === todayStr && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200/60">
                           DUE TODAY
                         </span>
                       )}
@@ -94,28 +97,31 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
                       {task.title}
                     </p>
 
-                    {/* Blocker alert callout if blocked */}
+                    {/* Blocker alert callout */}
                     {isBlocked && task.blocker && (
-                      <div className="mt-1.5 p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-800 flex items-start gap-1.5">
+                      <div className="mt-2 p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] text-rose-900 flex items-start gap-2 shadow-2xs">
                         <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">
-                          <strong>Blocker:</strong> {task.blocker}
+                        <span className="line-clamp-2 leading-relaxed">
+                          <strong className="font-bold text-rose-950">Blocker:</strong> {task.blocker}
                         </span>
                       </div>
                     )}
 
-                    {/* Next Action visible */}
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="font-semibold text-slate-700">Owner:</span>
-                      <span className="text-slate-900 font-medium">{task.assignedEmployeeName}</span>
-                      <span>•</span>
-                      <span className="text-slate-400 truncate">
-                        Next: <span className="text-slate-600">{task.nextAction}</span>
-                      </span>
+                    {/* Next Action & Owner Pill */}
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                      <div className="flex items-center gap-1 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/50">
+                        <span className="text-slate-400 font-medium">Owner:</span>
+                        <span className="text-slate-900 font-bold">{task.assignedEmployeeName}</span>
+                      </div>
+                      <span className="text-slate-300">•</span>
+                      <div className="truncate text-slate-600">
+                        <span className="font-semibold text-blue-700 mr-1">Next:</span>
+                        <span className="truncate">{task.nextAction}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 shrink-0 mt-2 transition-colors" />
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 shrink-0 mt-2 transition-all duration-200" />
                 </div>
               </div>
             );
@@ -123,13 +129,13 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
         )}
       </div>
 
-      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+      <div className="mt-auto pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
         <button
           onClick={() => {
             const targetRoute = currentUser?.role === 'ADMIN' ? '/admin/tasks' : '/manager/tasks';
             navigateTo(targetRoute, { quickFilter: 'blocked' });
           }}
-          className="font-semibold text-rose-600 hover:text-rose-800"
+          className="px-3 py-1.5 rounded-xl bg-rose-50/80 hover:bg-rose-100 text-rose-700 border border-rose-200/60 font-bold text-xs transition-colors cursor-pointer"
         >
           View all blocked ({tasks.filter((t) => t.status === 'BLOCKED').length})
         </button>
@@ -138,7 +144,7 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
             const targetRoute = currentUser?.role === 'ADMIN' ? '/admin/tasks' : '/manager/tasks';
             navigateTo(targetRoute, { quickFilter: 'overdue' });
           }}
-          className="font-semibold text-blue-600 hover:text-blue-800"
+          className="px-3 py-1.5 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200/60 font-bold text-xs transition-colors cursor-pointer"
         >
           View all overdue ({tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length})
         </button>

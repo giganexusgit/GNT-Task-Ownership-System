@@ -106,9 +106,11 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       <div className="flex items-center gap-2.5 sm:gap-3">
         {/* Date context display */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sep 04, 2026</span>
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50/80 border border-slate-200/80 text-xs font-semibold text-slate-700 shadow-2xs">
+          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+          <span>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+          </span>
         </div>
 
         {/* Quick Account Switcher (Restricted: Not clickable / visible for regular employees) */}

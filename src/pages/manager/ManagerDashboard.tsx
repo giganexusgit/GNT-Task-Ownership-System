@@ -5,6 +5,7 @@ import { WorkloadCard } from '../../components/dashboard/WorkloadCard';
 import { TasksAttentionCard } from '../../components/dashboard/TasksAttentionCard';
 import { ProjectProgressCard } from '../../components/dashboard/ProjectProgressCard';
 import { CompletionTrendCard } from '../../components/dashboard/CompletionTrendCard';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   CheckSquare,
   Clock,
@@ -21,7 +22,7 @@ interface ManagerDashboardProps {
 
 export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreateTask }) => {
   const { tasks, users, projects, navigateTo, currentUser } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((t) => t.status !== 'DONE').length;
@@ -59,6 +60,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Total Deliverables"
           value={totalTasks}
+          subtext="All tracked tasks"
           icon={CheckSquare}
           colorScheme="slate"
           onClick={() => navigateTo('/manager/tasks', { quickFilter: 'all' })}
@@ -67,6 +69,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Active in Flight"
           value={activeTasks}
+          subtext="In progress or review"
           icon={Clock}
           colorScheme="blue"
           onClick={() => navigateTo('/manager/tasks', { status: 'IN_PROGRESS' })}
@@ -75,6 +78,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Due Today"
           value={dueTodayTasks}
+          subtext="Today's deadlines"
           icon={Calendar}
           colorScheme="amber"
           isUrgent={dueTodayTasks > 0}
@@ -84,6 +88,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Overdue Warnings"
           value={overdueTasks}
+          subtext="Past deadline"
           icon={AlertCircle}
           colorScheme="rose"
           isUrgent={overdueTasks > 0}
@@ -93,6 +98,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Pending Review"
           value={reviewTasks}
+          subtext="Ready for sign-off"
           icon={Clock}
           colorScheme="purple"
           isUrgent={reviewTasks > 0}
@@ -102,6 +108,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
         <BentoKpiCard
           label="Completed"
           value={completedTasks}
+          subtext="Delivered work"
           icon={CheckCircle2}
           colorScheme="emerald"
           onClick={() => navigateTo('/manager/tasks', { quickFilter: 'completed' })}
