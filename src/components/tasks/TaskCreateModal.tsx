@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { TaskPriority, TaskAttachment } from '../../types';
 import { X, Check, Calendar, AlertCircle, Link, FileText, User as UserIcon } from 'lucide-react';
 import { DocumentUploadSection } from './DocumentUploadSection';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface TaskCreateModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
   );
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [dueDate, setDueDate] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    getLocalDateString(new Date(Date.now() + 7 * 86400000))
   );
   const [nextAction, setNextAction] = useState('');
   const [notes, setNotes] = useState('');

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { storageService } from '../../services/storageService';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   Database,
   Download,
@@ -24,7 +25,7 @@ export const AdminSettings: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `GNT_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `GNT_Backup_${getLocalDateString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Backup Created', 'Full enterprise database JSON downloaded', 'success');

@@ -41,10 +41,17 @@ class AuthService {
             createdAt: authUser.created_at || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          storageService.saveUser(user);
+          await storageService.saveUser(user);
         }
         
-        if (user && user.active) {
+        if (user) {
+          if (!user.active) {
+            try {
+              await supabase.auth.signOut();
+            } catch {}
+            storageService.setSession(null);
+            return null;
+          }
           storageService.setSession({ userId: user.id });
           return user;
         }
@@ -59,6 +66,9 @@ class AuthService {
     const users = storageService.getUsers();
     const user = users.find((u) => u.id === session.userId);
     if (!user || !user.active) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
       storageService.setSession(null);
       return null;
     }
@@ -77,6 +87,16 @@ class AuthService {
     }
 
     try {
+      // Check local user active status first
+      const users = storageService.getUsers();
+      const existingUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
+      if (existingUser && !existingUser.active) {
+        return {
+          success: false,
+          errorMessage: 'This account has been deactivated by an Administrator. Access denied.',
+        };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: cleanPassword,
@@ -84,10 +104,16 @@ class AuthService {
 
       if (error) {
         // If credentials failed on cloud, check if it's a starter user and attempt sign-up / fallback
-        const users = storageService.getUsers();
-        const localUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
+        const localUser = existingUser;
         
         if (localUser && (cleanPassword === '1234' || cleanPassword === '123456' || cleanPassword === localUser.pin)) {
+          if (!localUser.active) {
+            return {
+              success: false,
+              errorMessage: 'This account has been deactivated by an Administrator. Access denied.',
+            };
+          }
+
           // Attempt auto sign-up in Supabase for standard starter account
           try {
             await supabase.auth.signUp({
@@ -116,8 +142,18 @@ class AuthService {
       }
 
       if (data.user) {
-        const users = storageService.getUsers();
         let user = users.find((u) => u.email.toLowerCase() === cleanEmail || u.id === data.user.id);
+
+        if (user && !user.active) {
+          try {
+            await supabase.auth.signOut();
+          } catch {}
+          storageService.setSession(null);
+          return {
+            success: false,
+            errorMessage: 'This account has been deactivated by an Administrator. Access denied.',
+          };
+        }
 
         if (!user) {
           const meta = data.user.user_metadata || {};
@@ -141,7 +177,7 @@ class AuthService {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          storageService.saveUser(user);
+          await storageService.saveUser(user);
         }
 
         storageService.setSession({ userId: user.id });
@@ -217,7 +253,7 @@ class AuthService {
         updatedAt: new Date().toISOString(),
       };
 
-      storageService.saveUser(newUser);
+      await storageService.saveUser(newUser);
       storageService.setSession({ userId: newUser.id });
 
       return { success: true, user: newUser };

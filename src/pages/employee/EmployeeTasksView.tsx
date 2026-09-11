@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { TaskTable } from '../../components/tasks/TaskTable';
 import { Task } from '../../types';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   CheckSquare,
   Clock,
@@ -20,7 +21,7 @@ export const EmployeeTasksView: React.FC<EmployeeTasksViewProps> = ({
   onOpenEmployeeUpdate,
 }) => {
   const { tasks, currentUser, openTaskDetail } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   if (!currentUser) return null;
 

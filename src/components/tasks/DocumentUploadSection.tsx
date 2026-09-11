@@ -59,11 +59,11 @@ export const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     setUploadError(null);
 
     const newAttachments: TaskAttachment[] = [];
-    const maxSizeBytes = 20 * 1024 * 1024; // 20 MB
+    const maxSizeBytes = 2.5 * 1024 * 1024; // 2.5 MB per file for safe browser storage
 
     Array.from(files).forEach((file) => {
       if (file.size > maxSizeBytes) {
-        setUploadError(`File "${file.name}" exceeds the 20MB limit.`);
+        setUploadError(`File "${file.name}" exceeds the 2.5MB limit. Please attach smaller files or link external documents.`);
         return;
       }
 

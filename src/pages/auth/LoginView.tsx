@@ -25,8 +25,10 @@ export const LoginView: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const activeUsers = users.filter((u) => u.active);
+
   // Security PIN Form State
-  const [selectedUserId, setSelectedUserId] = useState<string>(() => users[0]?.id || '');
+  const [selectedUserId, setSelectedUserId] = useState<string>(() => users.find((u) => u.active)?.id || '');
   const [pin, setPin] = useState('');
 
   // Sign Up Form State
@@ -40,10 +42,11 @@ export const LoginView: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (users && users.length > 0) {
-      const exists = users.some((u) => u.id === selectedUserId);
+    const active = users.filter((u) => u.active);
+    if (active && active.length > 0) {
+      const exists = active.some((u) => u.id === selectedUserId);
       if (!exists) {
-        setSelectedUserId(users[0].id);
+        setSelectedUserId(active[0].id);
       }
     }
   }, [users, selectedUserId]);
@@ -245,14 +248,14 @@ export const LoginView: React.FC = () => {
                   Select Team Account
                 </label>
                 <select
-                  value={selectedUserId || users[0]?.id || ''}
+                  value={selectedUserId || activeUsers[0]?.id || ''}
                   onChange={(e) => {
                     setSelectedUserId(e.target.value);
                     setError('');
                   }}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
                 >
-                  {users.map((u) => (
+                  {activeUsers.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name} — {u.role} ({u.department || 'Operations'})
                     </option>

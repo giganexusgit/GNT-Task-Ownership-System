@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../ui/StatusBadge';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   X,
   Calendar,
@@ -51,7 +52,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     .filter((a) => a.taskId === task.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const isOverdue = task.dueDate < todayStr && task.status !== 'DONE';
   const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
   const isBlocked = task.status === 'BLOCKED';

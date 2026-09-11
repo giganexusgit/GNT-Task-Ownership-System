@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../ui/StatusBadge';
 import { EmptyState } from '../ui/EmptyState';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   Search,
   Filter,
@@ -15,6 +16,8 @@ import {
   RotateCcw,
   Sparkles,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface TaskTableProps {
@@ -42,7 +45,15 @@ export const TaskTable: React.FC<TaskTableProps> = ({
     showToast,
   } = useApp();
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(25);
+
+  const todayStr = getLocalDateString();
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [taskFilterState]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTaskFilterState((prev: any) => ({ ...prev, search: e.target.value }));
@@ -108,7 +119,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (!match) return false;
     }
 
-    if (taskFilterState.dueDate && taskFilterState.dueDate.trim()) {
+    if (taskFilterState.dueDate && taskFilterState.dueDate.trim() && taskFilterState.quickFilter !== 'overdue') {
       if (t.dueDate !== taskFilterState.dueDate) return false;
     }
 
@@ -160,8 +171,8 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const canManageTask = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
-  // Base tasks for badge counts, respecting employee/project/search filters
-  const contextFilteredTasks = tasks.filter((t) => {
+  // Helper to test if a task matches current toolbar filters (with optional overrides)
+  const matchesToolbarFilters = (t: Task, overrides?: { ignoreDueDate?: boolean; ignoreStatus?: boolean }) => {
     if (taskFilterState.search && taskFilterState.search.trim()) {
       const q = taskFilterState.search.toLowerCase().trim();
       const match =
@@ -175,16 +186,77 @@ export const TaskTable: React.FC<TaskTableProps> = ({
     }
     if (taskFilterState.employeeId && t.assignedEmployeeId !== taskFilterState.employeeId) return false;
     if (taskFilterState.projectId && t.projectId !== taskFilterState.projectId) return false;
+    if (taskFilterState.priority && taskFilterState.priority !== 'ALL' && t.priority !== taskFilterState.priority) return false;
+
+    if (!overrides?.ignoreStatus && taskFilterState.status && taskFilterState.status !== 'ALL') {
+      if (t.status !== taskFilterState.status) return false;
+    }
+
+    if (!overrides?.ignoreDueDate && taskFilterState.dueDate && taskFilterState.dueDate.trim() && taskFilterState.quickFilter !== 'today') {
+      if (t.dueDate !== taskFilterState.dueDate) return false;
+    }
+
     return true;
-  });
+  };
+
+  // Base tasks matching all currently active toolbar filters
+  const contextFilteredTasks = tasks.filter((t) => matchesToolbarFilters(t));
 
   const quickFilterTabs = [
-    { id: 'all', label: 'All Tasks', count: contextFilteredTasks.filter((t) => t.status !== 'DONE').length },
-    { id: 'today', label: 'Due Today', count: contextFilteredTasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length },
-    { id: 'overdue', label: 'Overdue', count: contextFilteredTasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length },
-    { id: 'blocked', label: 'Blocked', count: contextFilteredTasks.filter((t) => t.status === 'BLOCKED').length },
-    { id: 'completed', label: 'Completed', count: contextFilteredTasks.filter((t) => t.status === 'DONE').length },
+    {
+      id: 'all',
+      label: 'All Tasks',
+      count:
+        taskFilterState.status && taskFilterState.status !== 'ALL'
+          ? contextFilteredTasks.length
+          : contextFilteredTasks.filter((t) => t.status !== 'DONE').length,
+    },
+    {
+      id: 'today',
+      label: 'Due Today',
+      count: tasks.filter(
+        (t) =>
+          matchesToolbarFilters(t, { ignoreDueDate: true }) &&
+          t.dueDate === todayStr &&
+          (taskFilterState.status && taskFilterState.status !== 'ALL'
+            ? t.status === taskFilterState.status
+            : t.status !== 'DONE')
+      ).length,
+    },
+    {
+      id: 'overdue',
+      label: 'Overdue',
+      count: tasks.filter(
+        (t) =>
+          matchesToolbarFilters(t, { ignoreDueDate: true }) &&
+          t.dueDate < todayStr &&
+          (taskFilterState.status && taskFilterState.status !== 'ALL'
+            ? t.status === taskFilterState.status
+            : t.status !== 'DONE')
+      ).length,
+    },
+    {
+      id: 'blocked',
+      label: 'Blocked',
+      count: tasks.filter(
+        (t) => matchesToolbarFilters(t, { ignoreStatus: true }) && t.status === 'BLOCKED'
+      ).length,
+    },
+    {
+      id: 'completed',
+      label: 'Completed',
+      count: tasks.filter(
+        (t) => matchesToolbarFilters(t, { ignoreStatus: true }) && t.status === 'DONE'
+      ).length,
+    },
   ];
+
+  const totalItems = filtered.length;
+  const itemsPerPage = pageSize === 'ALL' ? totalItems || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const validPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (validPage - 1) * (pageSize === 'ALL' ? totalItems : pageSize);
+  const paginatedTasks = pageSize === 'ALL' ? filtered : filtered.slice(startIndex, startIndex + pageSize);
 
   return (
     <div className="space-y-4">
@@ -218,7 +290,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
         </div>
 
         <div className="text-xs text-slate-500 hidden sm:block shrink-0">
-          Showing <strong>{filtered.length}</strong> of <strong>{tasks.length}</strong> tasks
+          Showing <strong>{filtered.length}</strong> of <strong>{contextFilteredTasks.length}</strong> tasks
+          {contextFilteredTasks.length !== tasks.length && (
+            <span className="text-slate-400 text-[11px] ml-1">({tasks.length} total)</span>
+          )}
         </div>
       </div>
 
@@ -384,7 +459,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((task) => {
+                {paginatedTasks.map((task) => {
                   const isOverdue = task.dueDate < todayStr && task.status !== 'DONE';
                   const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
                   const isBlocked = task.status === 'BLOCKED';
@@ -490,10 +565,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                             <div
                               className={`h-full rounded-full transition-all duration-300 ${
                                 task.status === 'DONE'
-                                  ? 'bg-emerald-500'
-                                  : task.progress > 50
-                                  ? 'bg-blue-600'
-                                  : 'bg-indigo-500'
+                                ? 'bg-emerald-500'
+                                : task.progress > 50
+                                ? 'bg-blue-600'
+                                : 'bg-indigo-500'
                               }`}
                               style={{ width: `${task.progress}%` }}
                             />
@@ -554,6 +629,62 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <span>Showing</span>
+              <span className="font-bold text-slate-900">
+                {totalItems === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + (pageSize === 'ALL' ? totalItems : pageSize), totalItems)}
+              </span>
+              <span>of</span>
+              <span className="font-bold text-slate-900">{totalItems}</span>
+              <span>deliverables</span>
+
+              <div className="ml-2 flex items-center gap-1.5">
+                <span className="text-slate-400">|</span>
+                <span className="text-slate-500">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
+                    setPageSize(val);
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value="ALL">All</option>
+                </select>
+              </div>
+            </div>
+
+            {pageSize !== 'ALL' && totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={validPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-2.5 font-semibold text-slate-700">
+                  Page {validPage} of {totalPages}
+                </span>
+                <button
+                  disabled={validPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
