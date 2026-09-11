@@ -78,65 +78,71 @@ export const WorkloadCard: React.FC<WorkloadCardProps> = ({ users, tasks }) => {
           <div
             key={user.id}
             onClick={() => handleUserClick(user.id)}
-            className="p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-slate-50/80 cursor-pointer transition-all duration-150 flex items-center justify-between gap-2.5 group"
+            className="p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-slate-50/80 cursor-pointer transition-all duration-150 space-y-2 group"
             title={`View ${user.name}'s deliverables`}
           >
-            {/* Assignee Identity */}
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200/70 group-hover:bg-blue-100 group-hover:text-blue-800 group-hover:border-blue-200 transition-colors">
-                {user.initials}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
-                  {user.name}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {user.department || user.role}
-                </p>
+            {/* Top Row: Assignee Identity & Active Workload Pill */}
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200/70 group-hover:bg-blue-100 group-hover:text-blue-800 group-hover:border-blue-200 transition-colors">
+                  {user.initials}
+                </span>
+                <div className="min-w-0 flex-1 pr-1">
+                  <p className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                    {user.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {user.department || user.role}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap ${
+                    active > 0
+                      ? 'bg-slate-100 text-slate-800 group-hover:bg-blue-50 group-hover:text-blue-700'
+                      : 'bg-slate-50 text-slate-400 border border-slate-100'
+                  }`}
+                >
+                  {active} active
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all duration-150 shrink-0" />
               </div>
             </div>
 
-            {/* Status & Workload Badges */}
-            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-              {/* Urgent indicator tags */}
-              {blocked > 0 && (
-                <span
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/70"
-                  title={`${blocked} blocked`}
-                >
-                  {blocked} blocked
-                </span>
-              )}
-              {overdue > 0 && (
-                <span
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70"
-                  title={`${overdue} overdue`}
-                >
-                  {overdue} overdue
-                </span>
-              )}
-              {dueToday > 0 && (
-                <span
-                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/70"
-                  title={`${dueToday} due today`}
-                >
-                  {dueToday} today
-                </span>
-              )}
-
-              {/* Active workload count pill */}
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors ${
-                  active > 0
-                    ? 'bg-slate-100 text-slate-800 group-hover:bg-blue-50 group-hover:text-blue-700'
-                    : 'bg-slate-50 text-slate-400 border border-slate-100'
-                }`}
-              >
-                {active} active
-              </span>
-
-              <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all duration-150 hidden sm:block" />
-            </div>
+            {/* Bottom Row: Urgent indicator tags (if any) */}
+            {(blocked > 0 || overdue > 0 || dueToday > 0) && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-slate-100/70 text-[10px]">
+                {blocked > 0 && (
+                  <span
+                    className="px-2 py-0.5 rounded-md font-bold bg-purple-50 text-purple-700 border border-purple-200/70 flex items-center gap-1.5 whitespace-nowrap"
+                    title={`${blocked} blocked`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                    {blocked} blocked
+                  </span>
+                )}
+                {overdue > 0 && (
+                  <span
+                    className="px-2 py-0.5 rounded-md font-bold bg-rose-50 text-rose-700 border border-rose-200/70 flex items-center gap-1.5 whitespace-nowrap"
+                    title={`${overdue} overdue`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    {overdue} overdue
+                  </span>
+                )}
+                {dueToday > 0 && (
+                  <span
+                    className="px-2 py-0.5 rounded-md font-bold bg-amber-50 text-amber-800 border border-amber-200/70 flex items-center gap-1.5 whitespace-nowrap"
+                    title={`${dueToday} due today`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    {dueToday} due today
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
