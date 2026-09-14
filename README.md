@@ -159,4 +159,4 @@ Ready to transform your enterprise deliverable execution and enforce zero-ambigu
 * **Request an Enterprise Demo:** Connect with our product team to schedule a tailored walkthrough of the platform.
 * **Explore Deployment Options:** Discuss custom role governance, integration paths, and enterprise onboarding packages.
 
-*Contact your GNT Product Specialist or email **enterprise@gnt-systems.com** to get started today.*
+*Contact your GNT Product Specialist or email **giganexustechnologyllp@gmail.com** to get started today.*

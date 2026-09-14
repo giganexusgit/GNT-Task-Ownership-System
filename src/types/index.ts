@@ -79,6 +79,7 @@ export interface Task {
   completedAt?: string;
   completedBy?: string;
   carriedForward?: boolean;
+  wasOverdue?: boolean;
 }
 
 export interface TaskActivity {
