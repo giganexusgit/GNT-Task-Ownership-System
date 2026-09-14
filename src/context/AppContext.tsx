@@ -211,7 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (typeof window !== 'undefined' && window.location.hash !== `#${newRoute}`) {
         window.history.replaceState(null, '', `#${newRoute}`);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const refreshAllState = useCallback(async () => {
@@ -239,7 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (typeof window !== 'undefined' && window.location.hash !== `#${authorized}`) {
             window.history.replaceState(null, '', `#${authorized}`);
           }
-        } catch {}
+        } catch { }
         return authorized;
       });
     } else {
@@ -249,7 +249,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (typeof window !== 'undefined' && window.location.hash !== '#/login') {
           window.history.replaceState(null, '', '#/login');
         }
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -273,7 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (prev !== hashRoute) {
             try {
               localStorage.setItem('gnt_active_route', hashRoute);
-            } catch {}
+            } catch { }
             return hashRoute;
           }
           return prev;
@@ -477,6 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetTask = tasks.find((t) => t.id === taskId);
     const res = await taskService.deleteTask(taskId, currentUser);
     if (res.success) {
+      await refreshAllState();
       showToast(
         'Task Deleted Successfully',
         targetTask ? `"${targetTask.title}" was permanently removed from project` : res.message,
@@ -545,6 +546,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetUser = users.find((u) => u.id === userId);
     const res = await userService.resetPin(userId, newPin, currentUser);
     if (res.success) {
+      await refreshAllState();
       showToast(
         'Security PIN Reset Successfully',
         targetUser ? `PIN updated for ${targetUser.name}` : res.message,
@@ -578,6 +580,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       setTasks(storageService.getTasks());
       showToast('Employee Deleted', res.message, 'success');
+      await refreshAllState();
     } else {
       showToast('Delete Failed', res.message, 'error');
     }

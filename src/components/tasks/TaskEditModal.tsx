@@ -3,6 +3,9 @@ import { Task, TaskPriority, TaskStatus, TaskAttachment } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { X, AlertCircle } from 'lucide-react';
 import { DocumentUploadSection } from './DocumentUploadSection';
+import { ProjectCombobox } from '../ui/ProjectCombobox';
+import { UserCombobox } from '../ui/UserCombobox';
+import { PriorityCombobox } from '../ui/PriorityCombobox';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -169,39 +172,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
               <label htmlFor="edit-task-project-select" className="block font-bold text-slate-700 mb-1">
                 Project or Client <span className="text-rose-500">*</span>
               </label>
-              <select
+              <ProjectCombobox
                 id="edit-task-project-select"
                 required
+                projects={projects}
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
-                <option value="">Select a Project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.projectName} ({p.clientName})
-                  </option>
-                ))}
-              </select>
+                onChange={setProjectId}
+              />
             </div>
 
             <div>
               <label htmlFor="edit-task-assignee" className="block font-bold text-slate-700 mb-1">
                 Assigned Owner (Single Accountability) <span className="text-rose-500">*</span>
               </label>
-              <select
+              <UserCombobox
                 id="edit-task-assignee"
                 required
+                users={assignees}
                 value={assignedEmployeeId}
-                onChange={(e) => setAssignedEmployeeId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
-                {assignees.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {u.department || u.role} ({u.role})
-                  </option>
-                ))}
-              </select>
+                onChange={setAssignedEmployeeId}
+              />
             </div>
           </div>
 
@@ -210,17 +200,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
               <label htmlFor="edit-task-priority" className="block font-bold text-slate-700 mb-1">
                 Priority
               </label>
-              <select
+              <PriorityCombobox
                 id="edit-task-priority"
+                required
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
+                onChange={(p) => setPriority(p)}
+              />
             </div>
 
             <div>

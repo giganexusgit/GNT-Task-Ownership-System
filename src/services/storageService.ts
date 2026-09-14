@@ -125,10 +125,14 @@ class StorageService {
     return this.getItem<User[]>(STORAGE_KEYS.USERS, SEED_USERS || []);
   }
 
-  public setUsers(users: User[], syncCloud = true): void {
+  public async setUsers(users: User[], syncCloud = true): Promise<void> {
     this.setItem(STORAGE_KEYS.USERS, users);
     if (syncCloud) {
-      supabaseDb.upsertUsers(users).catch((e) => console.warn('Supabase sync users error:', e));
+      try {
+        await supabaseDb.upsertUsers(users);
+      } catch (e) {
+        console.warn('Supabase sync users error:', e);
+      }
     }
   }
 

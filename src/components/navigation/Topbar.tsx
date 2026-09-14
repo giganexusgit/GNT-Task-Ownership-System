@@ -93,7 +93,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         </button>
 
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-md sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             {title}
           </h1>
           {subtitle && (

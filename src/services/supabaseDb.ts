@@ -343,11 +343,17 @@ export class SupabaseDbService {
 
   public async deleteTask(taskId: string): Promise<boolean> {
     try {
+      // 1. Delete task from tasks table
       const { error } = await supabase.from('tasks').delete().eq('id', taskId);
       if (error) {
         console.error('Supabase deleteTask error:', error);
         return false;
       }
+      // 2. Cascade delete related notifications from notifications table
+      await supabase.from('notifications').delete().eq('task_id', taskId);
+      // 3. Cascade delete related activities from activities table
+      await supabase.from('activities').delete().eq('task_id', taskId);
+
       return true;
     } catch (e) {
       console.error('Supabase deleteTask exception:', e);
