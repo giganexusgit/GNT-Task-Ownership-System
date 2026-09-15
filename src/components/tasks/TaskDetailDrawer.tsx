@@ -53,13 +53,13 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const todayStr = getLocalDateString();
-  const isOverdue = task.dueDate < todayStr && task.status !== 'DONE';
-  const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
+  const isOverdue = !!(task.dueDate && task.dueDate < todayStr && task.status !== 'DONE');
+  const isDueToday = !!(task.dueDate && task.dueDate === todayStr && task.status !== 'DONE');
   const isBlocked = task.status === 'BLOCKED';
 
   const wasCompletedOverdue =
     task.status === 'DONE' &&
-    (task.wasOverdue || (task.completedAt && task.completedAt.split('T')[0] > task.dueDate));
+    (task.wasOverdue || (task.completedAt && task.dueDate && task.completedAt.split('T')[0] > task.dueDate));
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const canDelete = currentUser?.role === 'ADMIN';
@@ -68,6 +68,15 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const handleDelete = async () => {
     await deleteTask(task.id);
   };
+
+  const ownerName = task.assignedEmployeeName || 'Unassigned';
+  const ownerInitials = task.assignedEmployeeName
+    ? task.assignedEmployeeName
+        .split(' ')
+        .map((s) => s[0])
+        .join('')
+        .slice(0, 2)
+    : '--';
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/30 backdrop-blur-xs flex justify-end animate-in fade-in">
@@ -133,13 +142,9 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               <span className="text-[10px] uppercase font-semibold text-slate-400">Assigned Owner</span>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-800 font-bold text-[10px] flex items-center justify-center shrink-0">
-                  {task.assignedEmployeeName
-                    .split(' ')
-                    .map((s) => s[0])
-                    .join('')
-                    .slice(0, 2)}
+                  {ownerInitials}
                 </span>
-                <span className="font-bold text-slate-900 truncate">{task.assignedEmployeeName}</span>
+                <span className="font-bold text-slate-900 truncate">{ownerName}</span>
               </div>
             </div>
 
@@ -149,7 +154,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               <div className="flex items-center gap-1.5 mt-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 <span className={`font-bold ${isOverdue ? 'text-rose-600' : 'text-slate-900'}`}>
-                  {task.dueDate}
+                  {task.dueDate || 'No due date'}
                 </span>
                 {isOverdue && (
                   <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-rose-100 text-rose-700 uppercase">
@@ -167,9 +172,9 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                   </span>
                 )}
               </div>
-              {wasCompletedOverdue && (() => {
+              {wasCompletedOverdue && task.dueDate && (() => {
                 const completionDateStr = task.completedAt ? task.completedAt.split('T')[0] : todayStr;
-                const dueMs = new Date(task.dueDate).getTime();
+                const dueMs = new Date(task.dueDate!).getTime();
                 const compMs = new Date(completionDateStr).getTime();
                 const delayDays = Math.max(1, Math.round((compMs - dueMs) / (1000 * 60 * 60 * 24)));
                 return (

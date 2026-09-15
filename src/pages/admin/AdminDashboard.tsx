@@ -24,8 +24,8 @@ export const AdminDashboard: React.FC = () => {
   // Derived counts
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((t) => t.status !== 'DONE').length;
-  const dueTodayTasks = tasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length;
-  const overdueTasks = tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length;
+  const dueTodayTasks = tasks.filter((t) => t.dueDate && t.dueDate === todayStr && t.status !== 'DONE').length;
+  const overdueTasks = tasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'DONE').length;
   const blockedTasks = tasks.filter((t) => t.status === 'BLOCKED').length;
   const completedTasks = tasks.filter((t) => t.status === 'DONE').length;
 

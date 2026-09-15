@@ -50,10 +50,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const todayStr = getLocalDateString();
 
-  // Reset to page 1 whenever filters change
+  // Reset to page 1 whenever filters or tasks array change
   useEffect(() => {
     setCurrentPage(1);
-  }, [taskFilterState]);
+  }, [taskFilterState, tasks]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTaskFilterState((prev: any) => ({ ...prev, search: e.target.value }));
@@ -114,13 +114,13 @@ export const TaskTable: React.FC<TaskTableProps> = ({
         t.description.toLowerCase().includes(q) ||
         t.projectName.toLowerCase().includes(q) ||
         t.clientName.toLowerCase().includes(q) ||
-        t.assignedEmployeeName.toLowerCase().includes(q) ||
+        (t.assignedEmployeeName && t.assignedEmployeeName.toLowerCase().includes(q)) ||
         t.nextAction.toLowerCase().includes(q);
       if (!match) return false;
     }
 
-    if (taskFilterState.dueDate && taskFilterState.dueDate.trim() && taskFilterState.quickFilter !== 'overdue') {
-      if (t.dueDate !== taskFilterState.dueDate) return false;
+    if (taskFilterState.dueDate && taskFilterState.dueDate.trim() && (taskFilterState.quickFilter || 'all') !== 'all' && taskFilterState.quickFilter !== 'overdue') {
+      if ((t.dueDate || '') !== taskFilterState.dueDate) return false;
     }
 
     if (taskFilterState.status && taskFilterState.status !== 'ALL') {
@@ -131,7 +131,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (t.priority !== taskFilterState.priority) return false;
     }
 
-    if (taskFilterState.employeeId) {
+    if (!isEmployeeView && taskFilterState.employeeId) {
       if (t.assignedEmployeeId !== taskFilterState.employeeId) return false;
     }
 
@@ -145,15 +145,15 @@ export const TaskTable: React.FC<TaskTableProps> = ({
         return false;
       }
     } else if (currentQuickFilter === 'today') {
-      if (t.dueDate !== todayStr || t.status === 'DONE') {
+      if (!t.dueDate || t.dueDate !== todayStr || t.status === 'DONE') {
         return false;
       }
     } else if (currentQuickFilter === 'overdue') {
-      if (t.dueDate >= todayStr || t.status === 'DONE') {
+      if (!t.dueDate || t.dueDate >= todayStr || t.status === 'DONE') {
         return false;
       }
     } else if (currentQuickFilter === 'upcoming') {
-      if (t.dueDate <= todayStr || t.status === 'DONE') {
+      if (!t.dueDate || t.dueDate <= todayStr || t.status === 'DONE') {
         return false;
       }
     } else if (currentQuickFilter === 'blocked') {
@@ -180,11 +180,11 @@ export const TaskTable: React.FC<TaskTableProps> = ({
         t.description.toLowerCase().includes(q) ||
         t.projectName.toLowerCase().includes(q) ||
         t.clientName.toLowerCase().includes(q) ||
-        t.assignedEmployeeName.toLowerCase().includes(q) ||
+        (t.assignedEmployeeName && t.assignedEmployeeName.toLowerCase().includes(q)) ||
         t.nextAction.toLowerCase().includes(q);
       if (!match) return false;
     }
-    if (taskFilterState.employeeId && t.assignedEmployeeId !== taskFilterState.employeeId) return false;
+    if (!isEmployeeView && taskFilterState.employeeId && t.assignedEmployeeId !== taskFilterState.employeeId) return false;
     if (taskFilterState.projectId && t.projectId !== taskFilterState.projectId) return false;
     if (taskFilterState.priority && taskFilterState.priority !== 'ALL' && t.priority !== taskFilterState.priority) return false;
 
@@ -192,8 +192,8 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (t.status !== taskFilterState.status) return false;
     }
 
-    if (!overrides?.ignoreDueDate && taskFilterState.dueDate && taskFilterState.dueDate.trim() && taskFilterState.quickFilter !== 'today') {
-      if (t.dueDate !== taskFilterState.dueDate) return false;
+    if (!overrides?.ignoreDueDate && taskFilterState.dueDate && taskFilterState.dueDate.trim() && (taskFilterState.quickFilter || 'all') !== 'all' && taskFilterState.quickFilter !== 'today') {
+      if ((t.dueDate || '') !== taskFilterState.dueDate) return false;
     }
 
     return true;
@@ -217,6 +217,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       count: tasks.filter(
         (t) =>
           matchesToolbarFilters(t, { ignoreDueDate: true }) &&
+          t.dueDate &&
           t.dueDate === todayStr &&
           (taskFilterState.status && taskFilterState.status !== 'ALL'
             ? t.status === taskFilterState.status
@@ -229,6 +230,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       count: tasks.filter(
         (t) =>
           matchesToolbarFilters(t, { ignoreDueDate: true }) &&
+          t.dueDate &&
           t.dueDate < todayStr &&
           (taskFilterState.status && taskFilterState.status !== 'ALL'
             ? t.status === taskFilterState.status
@@ -460,13 +462,22 @@ export const TaskTable: React.FC<TaskTableProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {paginatedTasks.map((task) => {
-                  const isOverdue = task.dueDate < todayStr && task.status !== 'DONE';
-                  const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
+                  const isOverdue = !!(task.dueDate && task.dueDate < todayStr && task.status !== 'DONE');
+                  const isDueToday = !!(task.dueDate && task.dueDate === todayStr && task.status !== 'DONE');
                   const isBlocked = task.status === 'BLOCKED';
                   const isMine = currentUser?.id === task.assignedEmployeeId;
                   const wasCompletedOverdue =
                     task.status === 'DONE' &&
-                    (task.wasOverdue || (task.completedAt && task.completedAt.split('T')[0] > task.dueDate));
+                    (task.wasOverdue || (task.completedAt && task.dueDate && task.completedAt.split('T')[0] > task.dueDate));
+
+                  const ownerDisplayName = task.assignedEmployeeName || 'Unassigned';
+                  const ownerInitials = task.assignedEmployeeName
+                    ? task.assignedEmployeeName
+                        .split(' ')
+                        .map((s) => s[0])
+                        .join('')
+                        .slice(0, 2)
+                    : '--';
 
                   return (
                     <tr
@@ -505,14 +516,10 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1.5">
                           <span className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0 border border-slate-200/70">
-                            {task.assignedEmployeeName
-                              .split(' ')
-                              .map((s) => s[0])
-                              .join('')
-                              .slice(0, 2)}
+                            {ownerInitials}
                           </span>
                           <span className="font-semibold text-slate-800 truncate max-w-[120px]">
-                            {task.assignedEmployeeName}
+                            {ownerDisplayName}
                           </span>
                         </div>
                       </td>
@@ -541,7 +548,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                                 : 'text-slate-700'
                             }`}
                           >
-                            {task.dueDate}
+                            {task.dueDate || 'No due date'}
                           </span>
                           {isOverdue && (
                             <span className="text-[10px] font-bold text-rose-600 uppercase">

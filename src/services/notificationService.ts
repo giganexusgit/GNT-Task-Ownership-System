@@ -136,7 +136,7 @@ class NotificationService {
       storageService.setNotifications(notifications);
     }
 
-    const overdueTasks = tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE');
+    const overdueTasks = tasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'DONE');
     if (overdueTasks.length === 0) return;
 
     let changed = false;

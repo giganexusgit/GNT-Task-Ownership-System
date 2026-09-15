@@ -18,16 +18,16 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
 
   // Categorize urgent tasks
   const blockedTasks = tasks.filter((t) => t.status === 'BLOCKED');
-  const overdueTasks = tasks.filter((t) => t.status !== 'DONE' && t.dueDate < todayStr);
-  const dueTodayTasks = tasks.filter((t) => t.status !== 'DONE' && t.dueDate === todayStr);
+  const overdueTasks = tasks.filter((t) => t.status !== 'DONE' && t.dueDate && t.dueDate < todayStr);
+  const dueTodayTasks = tasks.filter((t) => t.status !== 'DONE' && t.dueDate && t.dueDate === todayStr);
   const reviewTasks = tasks.filter((t) => t.status === 'REVIEW');
 
   // Master list of all tasks requiring attention sorted by severity: BLOCKED (0), OVERDUE (1), DUE TODAY (2), REVIEW (3)
   const allAttentionTasks = tasks
     .filter((t) => {
       if (t.status === 'DONE') return false;
-      const isOverdue = t.dueDate < todayStr;
-      const isDueToday = t.dueDate === todayStr;
+      const isOverdue = !!(t.dueDate && t.dueDate < todayStr);
+      const isDueToday = !!(t.dueDate && t.dueDate === todayStr);
       const isBlocked = t.status === 'BLOCKED';
       const isReview = t.status === 'REVIEW';
       return isBlocked || isOverdue || isDueToday || isReview;
@@ -35,8 +35,8 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
     .sort((a, b) => {
       const rank = (t: Task) => {
         if (t.status === 'BLOCKED') return 0;
-        if (t.dueDate < todayStr) return 1;
-        if (t.dueDate === todayStr) return 2;
+        if (t.dueDate && t.dueDate < todayStr) return 1;
+        if (t.dueDate && t.dueDate === todayStr) return 2;
         return 3;
       };
       return rank(a) - rank(b);
@@ -45,8 +45,8 @@ export const TasksAttentionCard: React.FC<TasksAttentionCardProps> = ({ tasks })
   // Filter based on active tab
   const filteredTasks = allAttentionTasks.filter((t) => {
     if (activeTab === 'BLOCKED') return t.status === 'BLOCKED';
-    if (activeTab === 'OVERDUE') return t.status !== 'DONE' && t.dueDate < todayStr;
-    if (activeTab === 'DUE_TODAY') return t.status !== 'DONE' && t.dueDate === todayStr;
+    if (activeTab === 'OVERDUE') return t.status !== 'DONE' && !!(t.dueDate && t.dueDate < todayStr);
+    if (activeTab === 'DUE_TODAY') return t.status !== 'DONE' && !!(t.dueDate && t.dueDate === todayStr);
     if (activeTab === 'REVIEW') return t.status === 'REVIEW';
     return true;
   });

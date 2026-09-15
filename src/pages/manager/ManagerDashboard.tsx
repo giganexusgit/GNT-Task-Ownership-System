@@ -26,8 +26,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onOpenCreate
 
   const totalTasks = tasks.length;
   const activeTasks = tasks.filter((t) => t.status !== 'DONE').length;
-  const dueTodayTasks = tasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length;
-  const overdueTasks = tasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length;
+  const dueTodayTasks = tasks.filter((t) => t.dueDate && t.dueDate === todayStr && t.status !== 'DONE').length;
+  const overdueTasks = tasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'DONE').length;
   const blockedTasks = tasks.filter((t) => t.status === 'BLOCKED').length;
   const reviewTasks = tasks.filter((t) => t.status === 'REVIEW').length;
   const completedTasks = tasks.filter((t) => t.status === 'DONE').length;

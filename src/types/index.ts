@@ -59,12 +59,12 @@ export interface Task {
   projectId: string;
   projectName: string;
   clientName: string;
-  assignedEmployeeId: string;
-  assignedEmployeeName: string;
+  assignedEmployeeId?: string;
+  assignedEmployeeName?: string;
   createdById: string;
   createdByName: string;
   priority: TaskPriority;
-  dueDate: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
   status: TaskStatus;
   progress: number; // 0 - 100
   blocker?: string; // Required if status is BLOCKED

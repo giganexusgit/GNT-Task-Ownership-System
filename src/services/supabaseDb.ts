@@ -222,7 +222,7 @@ export class SupabaseDbService {
         createdById: row.created_by_id || '',
         createdByName: row.created_by_name || 'Admin',
         priority: row.priority,
-        dueDate: row.due_date,
+        dueDate: row.due_date || '',
         status: row.status,
         progress: row.progress || 0,
         blocker: row.blocker || undefined,
@@ -646,7 +646,15 @@ export class SupabaseDbService {
             }
           }
 
-          // Note: We do NOT push missing local tasks back to remote.
+          // Also include any newly created local tasks that haven't reached remote yet
+          const remoteIds = new Set(remoteTasks.map((t) => t.id));
+          for (const lTask of localData.tasks) {
+            if (!remoteIds.has(lTask.id)) {
+              merged.unshift(lTask);
+              toPush.push(lTask);
+            }
+          }
+
           finalTasks = merged;
           if (toPush.length > 0) {
             for (const t of toPush) {

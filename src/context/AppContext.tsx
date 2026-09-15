@@ -201,7 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     priority: 'ALL',
     quickFilter: 'all',
     search: '',
-    dueDate: getLocalDateString(),
+    dueDate: '',
   }));
 
   const updateRoute = useCallback((newRoute: string) => {
@@ -399,6 +399,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openTaskDetail = (taskId: string) => {
     setSelectedTaskId(taskId);
+    if (activeRoute === '/notifications') {
+      const defaultTasksRoute = currentUser
+        ? getDefaultRouteForRole(currentUser.role)
+        : '/employee/tasks';
+      updateRoute(defaultTasksRoute);
+    }
   };
 
   const closeTaskDetail = () => {

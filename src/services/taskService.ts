@@ -109,9 +109,7 @@ class TaskService {
     if (!data.title.trim()) return { success: false, message: 'Task title is required.' };
     if (!data.description.trim()) return { success: false, message: 'Task description is required.' };
     if (!data.projectId) return { success: false, message: 'Project assignment is required.' };
-    if (!data.assignedEmployeeId) return { success: false, message: 'An assigned task owner is required.' };
     if (!data.priority) return { success: false, message: 'Priority level is required.' };
-    if (!data.dueDate) return { success: false, message: 'Due date deadline is required.' };
     if (!data.nextAction.trim()) return { success: false, message: 'A clear Next Action is required.' };
 
     const projects = storageService.getProjects();
@@ -144,13 +142,8 @@ class TaskService {
       await storageService.saveProject(project);
     }
 
-    // if (!project) return { success: false, message: 'Project or Client is required.' };
-
     const users = storageService.getUsers();
-    const assignedUser = users.find((u) => u.id === data.assignedEmployeeId);
-    if (!assignedUser || !assignedUser.active) {
-      return { success: false, message: 'Task owner must be an active employee or manager.' };
-    }
+    const assignedUser = data.assignedEmployeeId ? users.find((u) => u.id === data.assignedEmployeeId) : undefined;
 
     const newTask: Task = {
       id: generateId('task'),
@@ -159,8 +152,8 @@ class TaskService {
       projectId: project.id,
       projectName: project.projectName,
       clientName: project.clientName,
-      assignedEmployeeId: assignedUser.id,
-      assignedEmployeeName: assignedUser.name,
+      assignedEmployeeId: assignedUser?.id,
+      assignedEmployeeName: assignedUser?.name,
       createdById: actor.id,
       createdByName: actor.name,
       priority: data.priority,
@@ -188,19 +181,21 @@ class TaskService {
       userId: actor.id,
       userName: actor.name,
       userRole: actor.role,
-      action: `Task created and assigned to ${assignedUser.name}`,
-      newValue: assignedUser.name,
+      action: assignedUser ? `Task created and assigned to ${assignedUser.name}` : `Task created (Unassigned)`,
+      newValue: assignedUser?.name || 'Unassigned',
     });
 
-    // Notify assigned employee
-    await notificationService.createNotification({
-      userId: assignedUser.id,
-      type: 'NEW_TASK_ASSIGNED',
-      title: 'New Task Assigned',
-      message: `${actor.name} assigned you "${newTask.title}". Deadline: ${newTask.dueDate}.`,
-      taskId: newTask.id,
-      read: false,
-    });
+    // Notify assigned employee if assigned
+    if (assignedUser) {
+      await notificationService.createNotification({
+        userId: assignedUser.id,
+        type: 'NEW_TASK_ASSIGNED',
+        title: 'New Task Assigned',
+        message: `${actor.name} assigned you "${newTask.title}".${newTask.dueDate ? ` Deadline: ${newTask.dueDate}.` : ''}`,
+        taskId: newTask.id,
+        read: false,
+      });
+    }
 
     return { success: true, message: `Task "${newTask.title}" created successfully.`, task: newTask };
   }
@@ -371,16 +366,20 @@ class TaskService {
     const currentTask = tasks[taskIndex];
 
     // Reassignment check
-    const isReassigned = updates.assignedEmployeeId && updates.assignedEmployeeId !== currentTask.assignedEmployeeId;
+    const isReassigned = updates.assignedEmployeeId !== undefined && updates.assignedEmployeeId !== currentTask.assignedEmployeeId;
     let newAssigneeName = currentTask.assignedEmployeeName;
 
     if (isReassigned) {
-      const users = storageService.getUsers();
-      const newAssignee = users.find((u) => u.id === updates.assignedEmployeeId);
-      if (!newAssignee || !newAssignee.active) {
-        return { success: false, message: 'Cannot assign task to an inactive user.' };
+      if (updates.assignedEmployeeId) {
+        const users = storageService.getUsers();
+        const newAssignee = users.find((u) => u.id === updates.assignedEmployeeId);
+        if (!newAssignee || !newAssignee.active) {
+          return { success: false, message: 'Cannot assign task to an inactive user.' };
+        }
+        newAssigneeName = newAssignee.name;
+      } else {
+        newAssigneeName = undefined;
       }
-      newAssigneeName = newAssignee.name;
     }
 
     // Project change check
