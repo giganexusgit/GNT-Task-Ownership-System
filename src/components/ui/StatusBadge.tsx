@@ -4,9 +4,10 @@ import { TaskStatus, TaskPriority, ProjectStatus } from '../../types';
 interface StatusBadgeProps {
   status: TaskStatus;
   size?: 'sm' | 'md';
+  wasOverdue?: boolean;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md', wasOverdue = false }) => {
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs';
 
   switch (status) {
@@ -51,6 +52,23 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
         </span>
       );
     case 'DONE':
+      if (wasOverdue) {
+        return (
+          <div className="flex flex-col items-start gap-0.5">
+            <span
+              id={`status-badge-done-overdue`}
+              title="Task was completed past its original deadline"
+              className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 ${sizeClasses}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Done
+            </span>
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200/70 uppercase">
+              Delayed
+            </span>
+          </div>
+        );
+      }
       return (
         <span
           id={`status-badge-done`}

@@ -464,6 +464,9 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
                   const isBlocked = task.status === 'BLOCKED';
                   const isMine = currentUser?.id === task.assignedEmployeeId;
+                  const wasCompletedOverdue =
+                    task.status === 'DONE' &&
+                    (task.wasOverdue || (task.completedAt && task.completedAt.split('T')[0] > task.dueDate));
 
                   return (
                     <tr
@@ -550,12 +553,17 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                               Due Today
                             </span>
                           )}
+                          {wasCompletedOverdue && (
+                            <span className="text-[9px] font-bold text-amber-800 uppercase bg-amber-100/80 px-1 py-0.2 rounded border border-amber-200/70 max-w-fit mt-0.5" title="Task was completed past original deadline">
+                              Delayed
+                            </span>
+                          )}
                         </div>
                       </td>
 
                       {/* Status */}
                       <td className="py-3 px-3 whitespace-nowrap">
-                        <StatusBadge status={task.status} />
+                        <StatusBadge status={task.status} wasOverdue={wasCompletedOverdue} />
                       </td>
 
                       {/* Progress */}

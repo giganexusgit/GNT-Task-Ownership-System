@@ -250,6 +250,8 @@ class TaskService {
     let completedAt = currentTask.completedAt;
     let completedBy = currentTask.completedBy;
 
+    let wasOverdue = currentTask.wasOverdue;
+
     // Done status handling
     if (newStatus === 'DONE') {
       newProgress = 100;
@@ -257,10 +259,15 @@ class TaskService {
         completedAt = new Date().toISOString();
         completedBy = actor.name;
       }
+      const todayStr = getLocalDateString();
+      if (currentTask.dueDate < todayStr) {
+        wasOverdue = true;
+      }
     } else if (currentTask.status === 'DONE') {
       // Reopening completed task
       completedAt = undefined;
       completedBy = undefined;
+      wasOverdue = undefined;
     }
 
     const updatedTask: Task = {
@@ -273,6 +280,7 @@ class TaskService {
       expectedCompletionDate: updates.expectedCompletionDate ?? currentTask.expectedCompletionDate,
       completedAt,
       completedBy,
+      wasOverdue,
       updatedAt: new Date().toISOString(),
     };
 
@@ -409,15 +417,23 @@ class TaskService {
       }
     }
 
+    let wasOverdue = currentTask.wasOverdue;
+
     if (newStatus === 'DONE') {
       newProgress = 100;
       if (!completedAt) {
         completedAt = new Date().toISOString();
         completedBy = actor.name;
       }
+      const todayStr = getLocalDateString();
+      const targetDueDate = updates.dueDate || currentTask.dueDate;
+      if (targetDueDate < todayStr) {
+        wasOverdue = true;
+      }
     } else if (currentTask.status === 'DONE') {
       completedAt = undefined;
       completedBy = undefined;
+      wasOverdue = undefined;
     }
 
     const updatedTask: Task = {
@@ -428,8 +444,10 @@ class TaskService {
       assignedEmployeeName: newAssigneeName,
       status: newStatus,
       progress: newProgress,
+      blocker: newStatus === 'BLOCKED' ? (updates.blocker ?? currentTask.blocker)?.trim() : undefined,
       completedAt,
       completedBy,
+      wasOverdue,
       updatedAt: new Date().toISOString(),
     };
 
