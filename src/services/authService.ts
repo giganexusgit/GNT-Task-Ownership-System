@@ -103,38 +103,6 @@ class AuthService {
       });
 
       if (error) {
-        // If credentials failed on cloud, check if it's a starter user and attempt sign-up / fallback
-        const localUser = existingUser;
-        
-        if (localUser && (cleanPassword === '1234' || cleanPassword === '123456' || cleanPassword === localUser.pin)) {
-          if (!localUser.active) {
-            return {
-              success: false,
-              errorMessage: 'This account has been deactivated by an Administrator. Access denied.',
-            };
-          }
-
-          // Attempt auto sign-up in Supabase for standard starter account
-          try {
-            await supabase.auth.signUp({
-              email: cleanEmail,
-              password: cleanPassword.length >= 6 ? cleanPassword : `${cleanPassword}00`,
-              options: {
-                data: {
-                  name: localUser.name,
-                  role: localUser.role,
-                  department: localUser.department,
-                },
-              },
-            });
-          } catch {
-            // ignore
-          }
-
-          storageService.setSession({ userId: localUser.id });
-          return { success: true, user: localUser };
-        }
-
         return {
           success: false,
           errorMessage: error.message || 'Invalid email or password.',

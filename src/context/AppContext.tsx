@@ -291,7 +291,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
           storageService.syncWithSupabase();
-        }, 350);
+        }, 3000);
       })
       .subscribe();
 
@@ -433,6 +433,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await taskService.employeeUpdateTask(taskId, updates, currentUser);
     if (res.success && res.task) {
       const updated = res.task;
+      // Immediately update local tasks state so UI reflects the change at once
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       showToast(
         'Task Progress Updated',
         `"${updated.title}" marked as ${updated.status.replace('_', ' ')} (${updated.progress}%)`,
@@ -455,6 +457,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await taskService.updateTaskMetadata(taskId, updates, currentUser);
     if (res.success && res.task) {
       const updated = res.task;
+      // Immediately update local tasks state so all roles see the change at once
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       showToast(
         'Task Updated Successfully',
         `Saved modifications to "${updated.title}"`,

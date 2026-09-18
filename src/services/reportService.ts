@@ -214,8 +214,23 @@ class ReportService {
     const detailedTasks: DetailedTaskReportRow[] = relevantTasks.map((t) => {
       const compDate = t.completedAt ? t.completedAt.split('T')[0] : undefined;
       const isDone = t.status === 'DONE';
+      // A task is on-time only if completed and compDate <= dueDate
       const isOnTime = isDone && compDate ? compDate <= t.dueDate : false;
+      // A task is overdue if still active and past due date
       const isOverdue = !isDone && t.dueDate < todayStr;
+      // A task was completed but late (delayed)
+      const wasCompletedLate = isDone && (t.wasOverdue === true || (compDate ? compDate > t.dueDate : false));
+      // Calculate delay in days for completed-late tasks
+      let delayDays = 0;
+      if (wasCompletedLate && compDate) {
+        const d1 = new Date(t.dueDate);
+        const d2 = new Date(compDate);
+        delayDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      } else if (isOverdue) {
+        const d1 = new Date(t.dueDate);
+        const d2 = new Date(todayStr);
+        delayDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      }
       const isCarriedForward = !!t.carriedForward || t.createdAt.split('T')[0] < startDate;
 
       return {
@@ -231,6 +246,8 @@ class ReportService {
         priority: t.priority,
         isOnTime,
         isOverdue,
+        wasCompletedLate,
+        delayDays,
         isCarriedForward,
         nextAction: t.nextAction,
       };
@@ -339,11 +356,17 @@ class ReportService {
     report.detailedTasks.forEach((t) => {
       let deliveryStatus = 'On Track';
       if (t.status === 'DONE') {
-        deliveryStatus = t.isOnTime ? 'Delivered On-Time' : 'Delivered Delayed';
+        deliveryStatus = t.isOnTime ? 'Delivered On-Time' : `Delivered Delayed${t.delayDays > 0 ? ` (${t.delayDays} day${t.delayDays !== 1 ? 's' : ''} late)` : ''}`;
       } else if (t.isOverdue) {
-        deliveryStatus = 'Overdue';
+        deliveryStatus = `Overdue${t.delayDays > 0 ? ` (${t.delayDays} day${t.delayDays !== 1 ? 's' : ''})` : ''}`;
       } else if (t.status === 'BLOCKED') {
         deliveryStatus = 'Blocked';
+      } else if (t.status === 'REVIEW') {
+        deliveryStatus = 'In Review';
+      } else if (t.status === 'IN_PROGRESS') {
+        deliveryStatus = 'In Progress';
+      } else {
+        deliveryStatus = 'Not Started';
       }
 
       lines.push(

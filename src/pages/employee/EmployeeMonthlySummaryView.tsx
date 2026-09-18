@@ -16,7 +16,26 @@ import {
 
 export const EmployeeMonthlySummaryView: React.FC = () => {
   const { currentUser } = useApp();
-  const [selectedMonth, setSelectedMonth] = useState('2026-09');
+
+  // Build a dynamic list of months: last 12 months up to next 3
+  const monthOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = -12; i <= 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
+
+  const currentMonthValue = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
 
   const report = useMemo(() => {
     return reportService.generateMonthlyReport({
@@ -59,9 +78,9 @@ export const EmployeeMonthlySummaryView: React.FC = () => {
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white"
           >
-            <option value="2026-08">August 2026</option>
-            <option value="2026-09">September 2026</option>
-            <option value="2026-10">October 2026</option>
+            {monthOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
 
           <button
@@ -147,19 +166,33 @@ export const EmployeeMonthlySummaryView: React.FC = () => {
                     {t.status === 'DONE' ? (
                       t.isOnTime ? (
                         <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                          On-Time
+                          ✓ On-Time
                         </span>
                       ) : (
-                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                          Delayed
+                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded" title={t.delayDays > 0 ? `Completed ${t.delayDays} day(s) after deadline` : ''}>
+                          ⚠ Delayed{t.delayDays > 0 ? ` by ${t.delayDays}d` : ''}
                         </span>
                       )
                     ) : t.isOverdue ? (
-                      <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
-                        Overdue
+                      <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded" title={`${t.delayDays} day(s) past deadline`}>
+                        🔴 Overdue {t.delayDays > 0 ? `(${t.delayDays}d)` : ''}
+                      </span>
+                    ) : t.status === 'BLOCKED' ? (
+                      <span className="font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded">
+                        🚫 Blocked
+                      </span>
+                    ) : t.status === 'REVIEW' ? (
+                      <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                        👀 In Review
+                      </span>
+                    ) : t.status === 'IN_PROGRESS' ? (
+                      <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-semibold">
+                        ⏳ In Progress
                       </span>
                     ) : (
-                      <span className="text-slate-500">In Progress</span>
+                      <span className="text-slate-500">
+                        Not Started
+                      </span>
                     )}
                   </td>
                   <td className="py-2.5 px-4 text-slate-700 max-w-[240px] truncate">{t.nextAction}</td>
