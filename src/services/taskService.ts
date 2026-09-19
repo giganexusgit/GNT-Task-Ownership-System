@@ -175,9 +175,7 @@ class TaskService {
       updatedAt: new Date().toISOString(),
     };
 
-    const tasks = storageService.getTasks();
-    tasks.unshift(newTask);
-    storageService.setTasks(tasks);
+    storageService.saveTask(newTask);
 
     // Record activity
     await activityService.recordActivity({

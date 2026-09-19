@@ -1,4 +1,4 @@
-import { Notification } from '../types';
+import type { Notification } from '../types';
 import { storageService } from './storageService';
 
 class NotificationService {
@@ -54,6 +54,7 @@ class NotificationService {
 
     list.unshift(newNotif);
     storageService.setNotifications(list);
+    this.sendBrowserNotification(newNotif.title, newNotif.message);
     return newNotif;
   }
 
@@ -170,6 +171,30 @@ class NotificationService {
     if (changed && newNotifs.length > 0) {
       const updatedList = [...newNotifs, ...notifications];
       storageService.setNotifications(updatedList);
+    }
+  }
+
+  public async requestBrowserPermission(): Promise<NotificationPermission | 'unsupported'> {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        return await window.Notification.requestPermission();
+      } catch (e) {
+        console.warn('Browser notification permission error:', e);
+      }
+    }
+    return 'unsupported';
+  }
+
+  public sendBrowserNotification(title: string, message: string): void {
+    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+      try {
+        new window.Notification(title, {
+          body: message,
+          icon: '/favicon.ico',
+        });
+      } catch (e) {
+        console.warn('Failed to dispatch browser notification:', e);
+      }
     }
   }
 }

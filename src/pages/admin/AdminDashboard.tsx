@@ -56,7 +56,7 @@ export const AdminDashboard: React.FC = () => {
           id="kpi-due-today"
           label="Due Today"
           value={dueTodayTasks}
-          subtext="Sep 04 deadlines"
+          subtext="Today's deadlines"
           icon={Calendar}
           colorScheme="amber"
           isUrgent={dueTodayTasks > 0}

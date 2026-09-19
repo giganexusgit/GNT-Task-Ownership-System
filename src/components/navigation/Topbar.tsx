@@ -9,7 +9,11 @@ import {
   ChevronDown,
   UserCheck,
   Calendar,
+  Cloud,
+  RefreshCw,
 } from 'lucide-react';
+import { storageService } from '../../services/storageService';
+import { notificationService } from '../../services/notificationService';
 
 interface TopbarProps {
   onOpenMobileMenu: () => void;
@@ -75,6 +79,24 @@ export const Topbar: React.FC<TopbarProps> = ({
     }
   };
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await storageService.syncWithSupabase();
+    } finally {
+      setTimeout(() => setIsSyncing(false), 600);
+    }
+  };
+
+  const handleEnableBrowserNotifications = async () => {
+    const res = await notificationService.requestBrowserPermission();
+    if (res === 'granted') {
+      notificationService.sendBrowserNotification('Notifications Enabled', 'You will now receive desktop alerts for task assignments and blockers.');
+    }
+  };
+
   return (
     <header
       id="app-topbar"
@@ -105,10 +127,26 @@ export const Topbar: React.FC<TopbarProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Live Cloud Sync Pill */}
+        <button
+          id="btn-topbar-cloud-sync"
+          onClick={handleManualSync}
+          disabled={isSyncing}
+          title="Click to manually synchronize with Supabase PostgreSQL cloud"
+          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-600 shadow-2xs transition-colors cursor-pointer"
+        >
+          {isSyncing ? (
+            <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+          ) : (
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+          )}
+          <span className="hidden lg:inline">{isSyncing ? 'Syncing...' : 'Live Sync'}</span>
+        </button>
+
         {/* Date context display */}
         <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sep 04, 2026</span>
+          <span>{new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
         </div>
 
         {/* Quick Account Switcher (Restricted: Not clickable / visible for regular employees) */}

@@ -331,13 +331,23 @@ export class SupabaseDbService {
       }));
       const { error } = await supabase.from('tasks').upsert(payloads, { onConflict: 'id' });
       if (error) {
-        console.error('Supabase upsertTasks error:', error);
-        return false;
+        console.warn('Supabase upsertTasks batch failed, falling back to individual upserts:', error.message);
+        let allSuccess = true;
+        for (const task of tasks) {
+          const ok = await this.upsertTask(task);
+          if (!ok) allSuccess = false;
+        }
+        return allSuccess;
       }
       return true;
     } catch (e) {
       console.error('Supabase upsertTasks exception:', e);
-      return false;
+      let allSuccess = true;
+      for (const task of tasks) {
+        const ok = await this.upsertTask(task);
+        if (!ok) allSuccess = false;
+      }
+      return allSuccess;
     }
   }
 

@@ -200,7 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     priority: 'ALL',
     quickFilter: 'all',
     search: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: '',
   }));
 
   const updateRoute = useCallback((newRoute: string) => {

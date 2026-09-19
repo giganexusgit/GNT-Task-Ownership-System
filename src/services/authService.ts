@@ -10,8 +10,19 @@ export interface LoginResult {
 
 class AuthService {
   public async getCurrentUser(): Promise<User | null> {
+    // 1. Check local session (explicit user choice or active login)
+    const localSession = storageService.getSession();
+    if (localSession?.userId) {
+      const users = storageService.getUsers();
+      const user = users.find((u) => u.id === localSession.userId);
+      if (user && user.active) {
+        return user;
+      }
+      storageService.setSession(null);
+    }
+
     try {
-      // 1. Check Supabase Auth Session
+      // 2. Fallback to Supabase Auth Session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const authUser = session.user;
@@ -50,19 +61,10 @@ class AuthService {
         }
       }
     } catch (err) {
-      console.warn('Supabase session check fallback to local session:', err);
+      console.warn('Supabase session check fallback:', err);
     }
 
-    // 2. Fallback to local session
-    const session = storageService.getSession();
-    if (!session || !session.userId) return null;
-    const users = storageService.getUsers();
-    const user = users.find((u) => u.id === session.userId);
-    if (!user || !user.active) {
-      storageService.setSession(null);
-      return null;
-    }
-    return user;
+    return null;
   }
 
   /**

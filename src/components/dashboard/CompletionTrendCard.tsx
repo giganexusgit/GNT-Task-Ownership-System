@@ -8,14 +8,24 @@ interface CompletionTrendCardProps {
 
 export const CompletionTrendCard: React.FC<CompletionTrendCardProps> = ({ tasks }) => {
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
-  const todayStr = '2026-09-04';
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const monthName = now.toLocaleString('en-US', { month: 'long' });
+  const monthShort = now.toLocaleString('en-US', { month: 'short' });
+  const todayStr = now.toISOString().split('T')[0];
+  const lastDay = new Date(year, month + 1, 0).getDate();
 
-  // Derive weekly milestones for September 2026
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const ym = `${year}-${pad(month + 1)}`;
+
+  // Derive weekly milestones dynamically for current month
   const weeks = [
-    { label: 'W1 (Sep 1–7)', start: '2026-09-01', end: '2026-09-07' },
-    { label: 'W2 (Sep 8–14)', start: '2026-09-08', end: '2026-09-14' },
-    { label: 'W3 (Sep 15–21)', start: '2026-09-15', end: '2026-09-21' },
-    { label: 'W4 (Sep 22–30)', start: '2026-09-22', end: '2026-09-30' },
+    { label: `W1 (${monthShort} 1–7)`, start: `${ym}-01`, end: `${ym}-07` },
+    { label: `W2 (${monthShort} 8–14)`, start: `${ym}-08`, end: `${ym}-14` },
+    { label: `W3 (${monthShort} 15–21)`, start: `${ym}-15`, end: `${ym}-21` },
+    { label: `W4 (${monthShort} 22–${lastDay})`, start: `${ym}-22`, end: `${ym}-${pad(lastDay)}` },
   ];
 
   const trendData = weeks.map((w) => {
@@ -64,7 +74,7 @@ export const CompletionTrendCard: React.FC<CompletionTrendCardProps> = ({ tasks 
             </span>
             <div>
               <h3 className="text-sm font-bold text-slate-900">Task Completion Velocity</h3>
-              <p className="text-xs text-slate-500">Real-time delivery progress against September 2026 deadlines</p>
+              <p className="text-xs text-slate-500">Real-time delivery progress against {monthName} {year} deadlines</p>
             </div>
           </div>
 
