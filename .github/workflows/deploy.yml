@@ -38,4 +38,12 @@ jobs:
             cp -r dist/* /var/www/work-board/
             chown -R www-data:www-data /var/www/work-board
             
+            echo "⚙️ Syncing Nginx configuration..."
+            if [ -f nginx/work-board.giganexus.info.conf ]; then
+              cp nginx/work-board.giganexus.info.conf /etc/nginx/sites-available/work-board.giganexus.info
+              ln -sf /etc/nginx/sites-available/work-board.giganexus.info /etc/nginx/sites-enabled/
+              nginx -t && systemctl reload nginx
+              echo "🔄 Nginx reloaded successfully!"
+            fi
+            
             echo "✅ Deployment completed successfully!"
