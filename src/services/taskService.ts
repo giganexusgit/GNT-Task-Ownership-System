@@ -3,6 +3,8 @@ import { storageService } from './storageService';
 import { authService } from './authService';
 import { activityService } from './activityService';
 import { notificationService } from './notificationService';
+import { getLocalDateString } from '../utils/dateUtils';
+import { generateId } from '../utils/idUtils';
 
 export interface TaskFilterOptions {
   search?: string;
@@ -16,7 +18,7 @@ export interface TaskFilterOptions {
 class TaskService {
   public async getTasks(filter?: TaskFilterOptions): Promise<Task[]> {
     let tasks = storageService.getTasks();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
 
     if (!filter) {
       return tasks.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -107,9 +109,7 @@ class TaskService {
     if (!data.title.trim()) return { success: false, message: 'Task title is required.' };
     if (!data.description.trim()) return { success: false, message: 'Task description is required.' };
     if (!data.projectId) return { success: false, message: 'Project assignment is required.' };
-    if (!data.assignedEmployeeId) return { success: false, message: 'An assigned task owner is required.' };
     if (!data.priority) return { success: false, message: 'Priority level is required.' };
-    if (!data.dueDate) return { success: false, message: 'Due date deadline is required.' };
     if (!data.nextAction.trim()) return { success: false, message: 'A clear Next Action is required.' };
 
     const projects = storageService.getProjects();
@@ -139,26 +139,21 @@ class TaskService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      storageService.saveProject(project);
+      await storageService.saveProject(project);
     }
-
-    // if (!project) return { success: false, message: 'Project or Client is required.' };
 
     const users = storageService.getUsers();
-    const assignedUser = users.find((u) => u.id === data.assignedEmployeeId);
-    if (!assignedUser || !assignedUser.active) {
-      return { success: false, message: 'Task owner must be an active employee or manager.' };
-    }
+    const assignedUser = data.assignedEmployeeId ? users.find((u) => u.id === data.assignedEmployeeId) : undefined;
 
     const newTask: Task = {
-      id: `task-${Date.now()}`,
+      id: generateId('task'),
       title: data.title.trim(),
       description: data.description.trim(),
       projectId: project.id,
       projectName: project.projectName,
       clientName: project.clientName,
-      assignedEmployeeId: assignedUser.id,
-      assignedEmployeeName: assignedUser.name,
+      assignedEmployeeId: assignedUser?.id,
+      assignedEmployeeName: assignedUser?.name,
       createdById: actor.id,
       createdByName: actor.name,
       priority: data.priority,
@@ -184,19 +179,21 @@ class TaskService {
       userId: actor.id,
       userName: actor.name,
       userRole: actor.role,
-      action: `Task created and assigned to ${assignedUser.name}`,
-      newValue: assignedUser.name,
+      action: assignedUser ? `Task created and assigned to ${assignedUser.name}` : `Task created (Unassigned)`,
+      newValue: assignedUser?.name || 'Unassigned',
     });
 
-    // Notify assigned employee
-    await notificationService.createNotification({
-      userId: assignedUser.id,
-      type: 'NEW_TASK_ASSIGNED',
-      title: 'New Task Assigned',
-      message: `${actor.name} assigned you "${newTask.title}". Deadline: ${newTask.dueDate}.`,
-      taskId: newTask.id,
-      read: false,
-    });
+    // Notify assigned employee if assigned
+    if (assignedUser) {
+      await notificationService.createNotification({
+        userId: assignedUser.id,
+        type: 'NEW_TASK_ASSIGNED',
+        title: 'New Task Assigned',
+        message: `${actor.name} assigned you "${newTask.title}".${newTask.dueDate ? ` Deadline: ${newTask.dueDate}.` : ''}`,
+        taskId: newTask.id,
+        read: false,
+      });
+    }
 
     return { success: true, message: `Task "${newTask.title}" created successfully.`, task: newTask };
   }
@@ -246,6 +243,8 @@ class TaskService {
     let completedAt = currentTask.completedAt;
     let completedBy = currentTask.completedBy;
 
+    let wasOverdue = currentTask.wasOverdue;
+
     // Done status handling
     if (newStatus === 'DONE') {
       newProgress = 100;
@@ -253,10 +252,15 @@ class TaskService {
         completedAt = new Date().toISOString();
         completedBy = actor.name;
       }
+      const todayStr = getLocalDateString();
+      if (currentTask.dueDate < todayStr) {
+        wasOverdue = true;
+      }
     } else if (currentTask.status === 'DONE') {
       // Reopening completed task
       completedAt = undefined;
       completedBy = undefined;
+      wasOverdue = undefined;
     }
 
     const updatedTask: Task = {
@@ -269,11 +273,12 @@ class TaskService {
       expectedCompletionDate: updates.expectedCompletionDate ?? currentTask.expectedCompletionDate,
       completedAt,
       completedBy,
+      wasOverdue,
       updatedAt: new Date().toISOString(),
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.saveTask(updatedTask);
+    await storageService.saveTask(updatedTask);
 
     // Record specific activities
     if (updates.status && updates.status !== currentTask.status) {
@@ -359,16 +364,20 @@ class TaskService {
     const currentTask = tasks[taskIndex];
 
     // Reassignment check
-    const isReassigned = updates.assignedEmployeeId && updates.assignedEmployeeId !== currentTask.assignedEmployeeId;
+    const isReassigned = updates.assignedEmployeeId !== undefined && updates.assignedEmployeeId !== currentTask.assignedEmployeeId;
     let newAssigneeName = currentTask.assignedEmployeeName;
 
     if (isReassigned) {
-      const users = storageService.getUsers();
-      const newAssignee = users.find((u) => u.id === updates.assignedEmployeeId);
-      if (!newAssignee || !newAssignee.active) {
-        return { success: false, message: 'Cannot assign task to an inactive user.' };
+      if (updates.assignedEmployeeId) {
+        const users = storageService.getUsers();
+        const newAssignee = users.find((u) => u.id === updates.assignedEmployeeId);
+        if (!newAssignee || !newAssignee.active) {
+          return { success: false, message: 'Cannot assign task to an inactive user.' };
+        }
+        newAssigneeName = newAssignee.name;
+      } else {
+        newAssigneeName = undefined;
       }
-      newAssigneeName = newAssignee.name;
     }
 
     // Project change check
@@ -384,25 +393,6 @@ class TaskService {
             p.projectName.toLowerCase() === cleanInput.toLowerCase() ||
             `${p.projectName} (${p.clientName})`.toLowerCase() === cleanInput.toLowerCase()
         );
-      }
-      if (!proj && cleanInput) {
-        let pName = cleanInput;
-        let cName = 'Internal Ops';
-        const match = cleanInput.match(/^(.*?)\s*\((.*?)\)$/);
-        if (match) {
-          pName = match[1].trim();
-          cName = match[2].trim();
-        }
-        proj = {
-          id: `proj-${Date.now()}`,
-          projectName: pName,
-          clientName: cName,
-          status: 'ACTIVE',
-          description: `Project for task: ${currentTask.title}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        storageService.saveProject(proj);
       }
       if (proj) {
         newProjectName = proj.projectName;
@@ -424,15 +414,23 @@ class TaskService {
       }
     }
 
+    let wasOverdue = currentTask.wasOverdue;
+
     if (newStatus === 'DONE') {
       newProgress = 100;
       if (!completedAt) {
         completedAt = new Date().toISOString();
         completedBy = actor.name;
       }
+      const todayStr = getLocalDateString();
+      const targetDueDate = updates.dueDate || currentTask.dueDate;
+      if (targetDueDate < todayStr) {
+        wasOverdue = true;
+      }
     } else if (currentTask.status === 'DONE') {
       completedAt = undefined;
       completedBy = undefined;
+      wasOverdue = undefined;
     }
 
     const updatedTask: Task = {
@@ -443,13 +441,15 @@ class TaskService {
       assignedEmployeeName: newAssigneeName,
       status: newStatus,
       progress: newProgress,
+      blocker: newStatus === 'BLOCKED' ? (updates.blocker ?? currentTask.blocker)?.trim() : undefined,
       completedAt,
       completedBy,
+      wasOverdue,
       updatedAt: new Date().toISOString(),
     };
 
     tasks[taskIndex] = updatedTask;
-    storageService.saveTask(updatedTask);
+    await storageService.saveTask(updatedTask);
 
     // Track activity for reassignment
     if (isReassigned) {
@@ -514,7 +514,7 @@ class TaskService {
     const taskToDelete = tasks.find((t) => t.id === taskId);
     if (!taskToDelete) return { success: false, message: 'Task not found.' };
 
-      storageService.deleteTask(taskId);
+    await storageService.deleteTask(taskId);
     await activityService.recordActivity({
       taskId,
       taskTitle: taskToDelete.title,

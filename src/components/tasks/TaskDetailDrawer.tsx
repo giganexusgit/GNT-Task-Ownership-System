@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge, PriorityBadge } from '../ui/StatusBadge';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   X,
   Calendar,
@@ -51,10 +52,14 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     .filter((a) => a.taskId === task.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isOverdue = task.dueDate < todayStr && task.status !== 'DONE';
-  const isDueToday = task.dueDate === todayStr && task.status !== 'DONE';
+  const todayStr = getLocalDateString();
+  const isOverdue = !!(task.dueDate && task.dueDate < todayStr && task.status !== 'DONE');
+  const isDueToday = !!(task.dueDate && task.dueDate === todayStr && task.status !== 'DONE');
   const isBlocked = task.status === 'BLOCKED';
+
+  const wasCompletedOverdue =
+    task.status === 'DONE' &&
+    (task.wasOverdue || (task.completedAt && task.dueDate && task.completedAt.split('T')[0] > task.dueDate));
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const canDelete = currentUser?.role === 'ADMIN';
@@ -63,6 +68,15 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const handleDelete = async () => {
     await deleteTask(task.id);
   };
+
+  const ownerName = task.assignedEmployeeName || 'Unassigned';
+  const ownerInitials = task.assignedEmployeeName
+    ? task.assignedEmployeeName
+        .split(' ')
+        .map((s) => s[0])
+        .join('')
+        .slice(0, 2)
+    : '--';
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/30 backdrop-blur-xs flex justify-end animate-in fade-in">
@@ -73,38 +87,28 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
         {/* Drawer Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(task.id);
-                showToast('Identifier Copied', `Task ID ${task.id} copied to clipboard`, 'info');
-              }}
-              title="Click to copy task ID"
-              className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-            >
+            <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
               {task.id}
-            </button>
-            <StatusBadge status={task.status} />
+            </span>
+            <StatusBadge status={task.status} wasOverdue={wasCompletedOverdue} />
             <PriorityBadge priority={task.priority} />
           </div>
 
           <button
-            id="btn-close-task-detail"
             onClick={closeTaskDetail}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
-            aria-label="Close task drawer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content Body */}
+        {/* Drawer Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-          {/* Title */}
+          {/* Header Title */}
           <div>
-            <h2 className="text-lg font-bold text-slate-900 leading-snug">{task.title}</h2>
-            <div className="flex items-center gap-2 text-slate-500 mt-1">
-              <FolderKanban className="w-3.5 h-3.5 text-blue-600" />
-              <span className="font-semibold text-slate-800">{task.projectName}</span>
+            <h3 className="text-lg font-bold text-slate-900 leading-snug">{task.title}</h3>
+            <div className="flex items-center gap-2 mt-1 text-slate-500 font-medium">
+              <span className="text-slate-800 font-semibold">{task.projectName}</span>
               <span>•</span>
               <span>Client: {task.clientName}</span>
             </div>
@@ -131,20 +135,16 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             </p>
           </div>
 
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Quick Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* Owner */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-              <span className="text-[10px] uppercase font-semibold text-slate-400">Task Owner</span>
+              <span className="text-[10px] uppercase font-semibold text-slate-400">Assigned Owner</span>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-6 h-6 rounded-md bg-blue-100 text-blue-800 font-bold text-[10px] flex items-center justify-center shrink-0">
-                  {task.assignedEmployeeName
-                    .split(' ')
-                    .map((s) => s[0])
-                    .join('')
-                    .slice(0, 2)}
+                  {ownerInitials}
                 </span>
-                <span className="font-bold text-slate-900 truncate">{task.assignedEmployeeName}</span>
+                <span className="font-bold text-slate-900 truncate">{ownerName}</span>
               </div>
             </div>
 
@@ -154,7 +154,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
               <div className="flex items-center gap-1.5 mt-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 <span className={`font-bold ${isOverdue ? 'text-rose-600' : 'text-slate-900'}`}>
-                  {task.dueDate}
+                  {task.dueDate || 'No due date'}
                 </span>
                 {isOverdue && (
                   <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-rose-100 text-rose-700 uppercase">
@@ -166,7 +166,28 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                     Today
                   </span>
                 )}
+                {wasCompletedOverdue && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 uppercase">
+                    Delayed
+                  </span>
+                )}
               </div>
+              {wasCompletedOverdue && task.dueDate && (() => {
+                const completionDateStr = task.completedAt ? task.completedAt.split('T')[0] : todayStr;
+                const dueMs = new Date(task.dueDate!).getTime();
+                const compMs = new Date(completionDateStr).getTime();
+                const delayDays = Math.max(1, Math.round((compMs - dueMs) / (1000 * 60 * 60 * 24)));
+                return (
+                  <div className="text-[10px] text-amber-700 font-semibold mt-1">
+                    Delayed by {delayDays} {delayDays === 1 ? 'day' : 'days'}
+                  </div>
+                );
+              })()}
+              {task.completedAt && (
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                  Done: {task.completedAt.split('T')[0]} {task.completedBy ? `by ${task.completedBy}` : ''}
+                </div>
+              )}
             </div>
 
             {/* Progress */}

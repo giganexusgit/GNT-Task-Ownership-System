@@ -3,6 +3,10 @@ import { useApp } from '../../context/AppContext';
 import { TaskPriority, TaskAttachment } from '../../types';
 import { X, Check, Calendar, AlertCircle, Link, FileText, User as UserIcon } from 'lucide-react';
 import { DocumentUploadSection } from './DocumentUploadSection';
+import { getLocalDateString } from '../../utils/dateUtils';
+import { ProjectCombobox } from '../ui/ProjectCombobox';
+import { UserCombobox } from '../ui/UserCombobox';
+import { PriorityCombobox } from '../ui/PriorityCombobox';
 
 interface TaskCreateModalProps {
   isOpen: boolean;
@@ -14,16 +18,10 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectInput, setProjectInput] = useState(
-    projects[0] ? `${projects[0].projectName} (${projects[0].clientName})` : ''
-  );
-  const [assignedEmployeeId, setAssignedEmployeeId] = useState(
-    users.find((u) => u.active && u.role === 'EMPLOYEE')?.id || ''
-  );
-  const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
-  const [dueDate, setDueDate] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-  );
+  const [projectInput, setProjectInput] = useState('');
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
+  const [priority, setPriority] = useState<TaskPriority | ''>('');
+  const [dueDate, setDueDate] = useState('');
   const [nextAction, setNextAction] = useState('');
   const [notes, setNotes] = useState('');
   const [referenceLink, setReferenceLink] = useState('');
@@ -50,12 +48,12 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       return;
     }
 
-    if (!assignedEmployeeId) {
-      setError('An assigned owner is required.');
+    if (!projectInput.trim()) {
+      setError('Project selection is required.');
       return;
     }
-    if (!dueDate) {
-      setError('Due date deadline is required.');
+    if (!priority) {
+      setError('Priority level selection is required.');
       return;
     }
 
@@ -66,7 +64,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       description,
       projectId: projectInput.trim(),
       assignedEmployeeId,
-      priority,
+      priority: priority as TaskPriority,
       dueDate,
       nextAction,
       notes,
@@ -82,6 +80,9 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       setTitle('');
       setDescription('');
       setProjectInput('');
+      setAssignedEmployeeId('');
+      setPriority('');
+      setDueDate('');
       setNextAction('');
       setNotes('');
       setReferenceLink('');
@@ -156,45 +157,29 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
           {/* Project & Assignee Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="task-project-input" className="block font-bold text-slate-700 mb-1">
-                Project or Client
+              <label htmlFor="task-project-select" className="block font-bold text-slate-700 mb-1">
+                Project or Client <span className="text-rose-500">*</span>
               </label>
-              <input
-                id="task-project-input"
-                type="text"
-                // required
-                list="project-suggestions-create"
-                placeholder="e.g. Phoenix Enterprise Cloud (Phoenix Financial)"
+              <ProjectCombobox
+                id="task-project-select"
+                required
+                projects={projects}
                 value={projectInput}
-                onChange={(e) => setProjectInput(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
+                onChange={setProjectInput}
               />
-              <datalist id="project-suggestions-create">
-                {projects.map((p) => (
-                  <option key={p.id} value={`${p.projectName} (${p.clientName})`}>
-                    {p.projectName}
-                  </option>
-                ))}
-              </datalist>
             </div>
 
             <div>
               <label htmlFor="task-assignee-select" className="block font-bold text-slate-700 mb-1">
-                Assigned Owner (Single Accountability) <span className="text-rose-500">*</span>
+                Assigned Owner (Single Accountability) <span className="text-slate-400 font-normal text-xs">(Optional)</span>
               </label>
-              <select
+              <UserCombobox
                 id="task-assignee-select"
-                required
+                users={assignees}
                 value={assignedEmployeeId}
-                onChange={(e) => setAssignedEmployeeId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
-                {assignees.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {u.department || u.role} ({u.role})
-                  </option>
-                ))}
-              </select>
+                onChange={setAssignedEmployeeId}
+                placeholder="Select Owner..."
+              />
             </div>
           </div>
 
@@ -204,28 +189,22 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
               <label htmlFor="task-priority-select" className="block font-bold text-slate-700 mb-1">
                 Priority Level <span className="text-rose-500">*</span>
               </label>
-              <select
+              <PriorityCombobox
                 id="task-priority-select"
                 required
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"
-              >
-                <option value="LOW">Low (Routine maintenance)</option>
-                <option value="MEDIUM">Medium (Standard deliverable)</option>
-                <option value="HIGH">High (Key business milestone)</option>
-                <option value="URGENT">Urgent (Immediate blocker / client SLA)</option>
-              </select>
+                onChange={(p) => setPriority(p)}
+                placeholder="Select Priority Level..."
+              />
             </div>
 
             <div>
               <label htmlFor="task-due-date-input" className="block font-bold text-slate-700 mb-1">
-                Hard Due Date Deadline <span className="text-rose-500">*</span>
+                Due Date Deadline <span className="text-slate-400 font-normal text-xs">(Optional)</span>
               </label>
               <input
                 id="task-due-date-input"
                 type="date"
-                required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs bg-white"

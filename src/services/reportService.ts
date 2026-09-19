@@ -8,6 +8,7 @@ import {
   User,
 } from '../types';
 import { storageService } from './storageService';
+import { getLocalDateString } from '../utils/dateUtils';
 
 export interface GeneratedMonthlyReport {
   filter: MonthlyReportFilter;
@@ -34,14 +35,14 @@ class ReportService {
     const allProjects = storageService.getProjects();
 
     const targetMonth = filter.month; // e.g. '2026-09'
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
 
     // Compute month boundaries
     const [yearStr, monthNumStr] = targetMonth.split('-');
     const year = parseInt(yearStr, 10);
     const monthIndex = parseInt(monthNumStr, 10) - 1; // 0-indexed
-    const startDate = new Date(Date.UTC(year, monthIndex, 1)).toISOString().split('T')[0];
-    const endDate = new Date(Date.UTC(year, monthIndex + 1, 0)).toISOString().split('T')[0];
+    const startDate = getLocalDateString(new Date(year, monthIndex, 1));
+    const endDate = getLocalDateString(new Date(year, monthIndex + 1, 0));
 
     // Date-based task filtering for this month:
     // A task belongs to this reporting window if:
@@ -254,7 +255,7 @@ class ReportService {
   private addDays(dateStr: string, days: number): string {
     const d = new Date(dateStr);
     d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   }
 
   /**

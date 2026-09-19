@@ -1,6 +1,7 @@
-import { Project, ProjectStatus, User } from '../types';
+import { Project, User, ProjectStatus } from '../types';
 import { storageService } from './storageService';
 import { authService } from './authService';
+import { generateId } from '../utils/idUtils';
 
 class ProjectService {
   public async getProjects(): Promise<Project[]> {
@@ -30,7 +31,7 @@ class ProjectService {
 
     const projects = storageService.getProjects();
     const newProject: Project = {
-      id: `proj-${Date.now()}`,
+      id: generateId('proj'),
       projectName: data.projectName.trim(),
       clientName: data.clientName.trim(),
       status: data.status,
@@ -109,7 +110,7 @@ class ProjectService {
       };
     }
 
-    storageService.deleteProject(id);
+    await storageService.deleteProject(id);
 
     return { success: true, message: 'Project deleted successfully.' };
   }

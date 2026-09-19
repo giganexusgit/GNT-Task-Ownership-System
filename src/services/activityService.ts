@@ -1,5 +1,6 @@
 import { TaskActivity } from '../types';
 import { storageService } from './storageService';
+import { generateId } from '../utils/idUtils';
 
 class ActivityService {
   public async getActivities(limit?: number, taskId?: string): Promise<TaskActivity[]> {
@@ -21,7 +22,7 @@ class ActivityService {
   ): Promise<TaskActivity> {
     const activities = storageService.getActivities();
     const newActivity: TaskActivity = {
-      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateId('act'),
       taskId: data.taskId,
       taskTitle: data.taskTitle,
       userId: data.userId,

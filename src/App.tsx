@@ -103,7 +103,7 @@ const MainAppLayout: React.FC = () => {
       pageSubtitle = 'Objective deliverables audit, completion rates, and on-time execution analysis';
       break;
     case '/admin/settings':
-      pageTitle = 'System & Data Administration';
+      pageTitle = 'System settings';
       pageSubtitle = 'Database repository, JSON snapshots, and architecture configuration';
       break;
     case '/manager/dashboard':

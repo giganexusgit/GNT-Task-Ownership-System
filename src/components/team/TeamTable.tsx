@@ -16,6 +16,8 @@ import {
   FileBarChart2,
   Edit2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface TeamTableProps {
@@ -36,6 +38,8 @@ export const TeamTable: React.FC<TeamTableProps> = ({
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(25);
 
   const canManageUsers = authService.canManageUsers(currentUser);
 
@@ -51,6 +55,13 @@ export const TeamTable: React.FC<TeamTableProps> = ({
     if (roleFilter !== 'ALL' && u.role !== roleFilter) return false;
     return true;
   });
+
+  const totalItems = filtered.length;
+  const itemsPerPage = pageSize === 'ALL' ? totalItems || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const validPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (validPage - 1) * (pageSize === 'ALL' ? totalItems : pageSize);
+  const paginatedUsers = pageSize === 'ALL' ? filtered : filtered.slice(startIndex, startIndex + pageSize);
 
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
@@ -118,7 +129,7 @@ export const TeamTable: React.FC<TeamTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((u) => {
+              {paginatedUsers.map((u) => {
                 const userTasks = tasks.filter((t) => t.assignedEmployeeId === u.id);
                 const activeCount = userTasks.filter((t) => t.status !== 'DONE').length;
                 const completedCount = userTasks.filter((t) => t.status === 'DONE').length;
@@ -271,6 +282,62 @@ export const TeamTable: React.FC<TeamTableProps> = ({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <span>Showing</span>
+            <span className="font-bold text-slate-900">
+              {totalItems === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + (pageSize === 'ALL' ? totalItems : pageSize), totalItems)}
+            </span>
+            <span>of</span>
+            <span className="font-bold text-slate-900">{totalItems}</span>
+            <span>team members</span>
+
+            <div className="ml-2 flex items-center gap-1.5">
+              <span className="text-slate-400">|</span>
+              <span className="text-slate-500">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
+                  setPageSize(val);
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="ALL">All</option>
+              </select>
+            </div>
+          </div>
+
+          {pageSize !== 'ALL' && totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                disabled={validPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-2.5 font-semibold text-slate-700">
+                Page {validPage} of {totalPages}
+              </span>
+              <button
+                disabled={validPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="p-1.5 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

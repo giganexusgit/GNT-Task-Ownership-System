@@ -3,6 +3,7 @@ import { Project, Task } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { ProjectStatusBadge } from '../ui/StatusBadge';
 import { FolderKanban, ArrowRight, ExternalLink } from 'lucide-react';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface ProjectProgressCardProps {
   projects: Project[];
@@ -11,7 +12,7 @@ interface ProjectProgressCardProps {
 
 export const ProjectProgressCard: React.FC<ProjectProgressCardProps> = ({ projects, tasks }) => {
   const { navigateTo, currentUser } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const targetProjectsRoute = currentUser?.role === 'ADMIN' ? '/admin/projects' : '/manager/projects';
   const targetTasksRoute = currentUser?.role === 'ADMIN' ? '/admin/tasks' : '/manager/tasks';
 

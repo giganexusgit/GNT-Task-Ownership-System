@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { TaskTable } from '../../components/tasks/TaskTable';
 import { Task } from '../../types';
+import { getLocalDateString } from '../../utils/dateUtils';
 import {
   CheckSquare,
   Clock,
@@ -19,8 +20,20 @@ interface EmployeeTasksViewProps {
 export const EmployeeTasksView: React.FC<EmployeeTasksViewProps> = ({
   onOpenEmployeeUpdate,
 }) => {
-  const { tasks, currentUser, openTaskDetail } = useApp();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const { tasks, currentUser, openTaskDetail, setTaskFilterState } = useApp();
+  const todayStr = getLocalDateString();
+
+  React.useEffect(() => {
+    setTaskFilterState({
+      status: 'ALL',
+      priority: 'ALL',
+      quickFilter: 'all',
+      employeeId: '',
+      projectId: '',
+      search: '',
+      dueDate: '',
+    });
+  }, [setTaskFilterState]);
 
   if (!currentUser) return null;
 
@@ -28,8 +41,8 @@ export const EmployeeTasksView: React.FC<EmployeeTasksViewProps> = ({
   const myTasks = tasks.filter((t) => t.assignedEmployeeId === currentUser.id);
 
   const activeCount = myTasks.filter((t) => t.status !== 'DONE').length;
-  const dueTodayCount = myTasks.filter((t) => t.dueDate === todayStr && t.status !== 'DONE').length;
-  const overdueCount = myTasks.filter((t) => t.dueDate < todayStr && t.status !== 'DONE').length;
+  const dueTodayCount = myTasks.filter((t) => t.dueDate && t.dueDate === todayStr && t.status !== 'DONE').length;
+  const overdueCount = myTasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'DONE').length;
   const blockedCount = myTasks.filter((t) => t.status === 'BLOCKED').length;
   const completedCount = myTasks.filter((t) => t.status === 'DONE').length;
 
