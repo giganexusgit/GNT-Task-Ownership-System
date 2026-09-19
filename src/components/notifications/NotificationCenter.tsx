@@ -11,7 +11,9 @@ import {
   ArrowRight,
   Trash2,
   X,
+  Volume2,
 } from 'lucide-react';
+import { notificationService } from '../../services/notificationService';
 
 export const NotificationCenter: React.FC = () => {
   const {
@@ -22,9 +24,30 @@ export const NotificationCenter: React.FC = () => {
     deleteNotification,
     clearNotifications,
     openTaskDetail,
+    showToast,
   } = useApp();
 
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
+  const [browserPerm, setBrowserPerm] = useState<NotificationPermission | 'unsupported'>(() =>
+    notificationService.getBrowserPermission()
+  );
+
+  const handleEnableDesktopNotifs = async () => {
+    const res = await notificationService.requestBrowserPermission();
+    setBrowserPerm(res);
+    if (res === 'granted') {
+      showToast('Notifications Active', 'Site desktop notifications enabled!', 'success');
+    } else if (res === 'denied') {
+      showToast('Notifications Blocked', 'Allow notifications in your browser address bar site settings.', 'info');
+    }
+  };
+
+  const handleSendTestNotif = async () => {
+    const ok = await notificationService.sendTestNotification();
+    if (ok) {
+      showToast('Test Sent', 'Desktop test notification dispatched with audio chime.', 'success');
+    }
+  };
 
   if (!currentUser) return null;
 
@@ -53,6 +76,66 @@ export const NotificationCenter: React.FC = () => {
 
   return (
     <div className="space-y-4 max-w-4xl">
+      {/* Browser / Site Desktop Notification Card */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-xl shrink-0 ${browserPerm === 'granted' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+            <Volume2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900">Desktop & Browser Alerts</h3>
+              {browserPerm === 'granted' && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                  Active
+                </span>
+              )}
+              {browserPerm === 'default' && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                  Not Enabled
+                </span>
+              )}
+              {browserPerm === 'denied' && (
+                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                  Blocked in Browser
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {browserPerm === 'granted'
+                ? 'You will receive instant native notifications and audio chimes for assignments, blockers, and overdue alerts.'
+                : browserPerm === 'denied'
+                ? 'Desktop notifications are blocked by your browser. Click the lock/settings icon in the address bar to allow.'
+                : 'Turn on desktop alerts to get notified even when this browser tab is in the background.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {browserPerm !== 'granted' ? (
+            <button
+              type="button"
+              id="btn-enable-desktop-notifs"
+              onClick={handleEnableDesktopNotifs}
+              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>Enable Site Notifications</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              id="btn-test-desktop-notifs"
+              onClick={handleSendTestNotif}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-slate-500" />
+              <span>Send Test Alert</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Header bar */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">

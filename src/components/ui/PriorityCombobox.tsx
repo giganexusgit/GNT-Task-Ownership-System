@@ -109,6 +109,10 @@ export const PriorityCombobox: React.FC<PriorityComboboxProps> = ({
         <input
           id={id}
           type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           required={required}
           placeholder={placeholder}
           value={query}

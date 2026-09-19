@@ -11,6 +11,7 @@ import {
   Calendar,
   Cloud,
   RefreshCw,
+  Volume2,
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { notificationService } from '../../services/notificationService';
@@ -90,11 +91,21 @@ export const Topbar: React.FC<TopbarProps> = ({
     }
   };
 
+  const [browserPerm, setBrowserPerm] = useState<NotificationPermission | 'unsupported'>(() =>
+    notificationService.getBrowserPermission()
+  );
+
+  useEffect(() => {
+    setBrowserPerm(notificationService.getBrowserPermission());
+  }, [showNotifMenu]);
+
   const handleEnableBrowserNotifications = async () => {
     const res = await notificationService.requestBrowserPermission();
-    if (res === 'granted') {
-      notificationService.sendBrowserNotification('Notifications Enabled', 'You will now receive desktop alerts for task assignments and blockers.');
-    }
+    setBrowserPerm(res);
+  };
+
+  const handleTestBrowserNotification = async () => {
+    await notificationService.sendTestNotification();
   };
 
   return (
@@ -254,6 +265,44 @@ export const Topbar: React.FC<TopbarProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Desktop / Site Notification Permission Control Bar */}
+              {browserPerm === 'granted' && (
+                <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-emerald-700 font-medium flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Site Alerts: Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleTestBrowserNotification}
+                    className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                  >
+                    Send Test Alert
+                  </button>
+                </div>
+              )}
+              {browserPerm === 'default' && (
+                <div className="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between text-[11px]">
+                  <span className="text-blue-900 font-medium flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-blue-600" />
+                    Receive site desktop alerts
+                  </span>
+                  <button
+                    type="button"
+                    id="btn-popover-enable-notifs"
+                    onClick={handleEnableBrowserNotifications}
+                    className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] cursor-pointer"
+                  >
+                    Enable
+                  </button>
+                </div>
+              )}
+              {browserPerm === 'denied' && (
+                <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-[10px] text-amber-800 flex items-center gap-1">
+                  <span>⚠️ Site alerts blocked. Allow notifications in browser address bar settings.</span>
+                </div>
+              )}
 
               <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                 {userNotifs.length === 0 ? (

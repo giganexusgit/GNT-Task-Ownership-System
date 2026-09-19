@@ -119,8 +119,11 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (!match) return false;
     }
 
-    if (taskFilterState.dueDate && taskFilterState.dueDate.trim() && (taskFilterState.quickFilter || 'all') !== 'all' && taskFilterState.quickFilter !== 'overdue') {
-      if ((t.dueDate || '') !== taskFilterState.dueDate) return false;
+    if (taskFilterState.dueDate && taskFilterState.dueDate.trim()) {
+      const selectedDate = taskFilterState.dueDate.trim();
+      const matchesDueDate = (t.dueDate || '') === selectedDate;
+      const matchesCreated = t.createdAt && getLocalDateString(t.createdAt) === selectedDate;
+      if (!matchesDueDate && !matchesCreated) return false;
     }
 
     if (taskFilterState.status && taskFilterState.status !== 'ALL') {
@@ -192,8 +195,11 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       if (t.status !== taskFilterState.status) return false;
     }
 
-    if (!overrides?.ignoreDueDate && taskFilterState.dueDate && taskFilterState.dueDate.trim() && (taskFilterState.quickFilter || 'all') !== 'all' && taskFilterState.quickFilter !== 'today') {
-      if ((t.dueDate || '') !== taskFilterState.dueDate) return false;
+    if (!overrides?.ignoreDueDate && taskFilterState.dueDate && taskFilterState.dueDate.trim()) {
+      const selectedDate = taskFilterState.dueDate.trim();
+      const matchesDueDate = (t.dueDate || '') === selectedDate;
+      const matchesCreated = t.createdAt && getLocalDateString(t.createdAt) === selectedDate;
+      if (!matchesDueDate && !matchesCreated) return false;
     }
 
     return true;

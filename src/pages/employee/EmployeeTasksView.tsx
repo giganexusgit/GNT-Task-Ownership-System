@@ -38,7 +38,12 @@ export const EmployeeTasksView: React.FC<EmployeeTasksViewProps> = ({
   if (!currentUser) return null;
 
   // Filter tasks belonging strictly to current employee
-  const myTasks = tasks.filter((t) => t.assignedEmployeeId === currentUser.id);
+  const myTasks = tasks.filter((t) => {
+    const matchId = t.assignedEmployeeId && t.assignedEmployeeId === currentUser.id;
+    const matchEmail = currentUser.email && (t.assignedEmployeeId?.toLowerCase() === currentUser.email.toLowerCase() || t.assignedEmployeeName?.toLowerCase() === currentUser.email.toLowerCase());
+    const matchName = currentUser.name && t.assignedEmployeeName && t.assignedEmployeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim();
+    return Boolean(matchId || matchEmail || matchName);
+  });
 
   const activeCount = myTasks.filter((t) => t.status !== 'DONE').length;
   const dueTodayCount = myTasks.filter((t) => t.dueDate && t.dueDate === todayStr && t.status !== 'DONE').length;

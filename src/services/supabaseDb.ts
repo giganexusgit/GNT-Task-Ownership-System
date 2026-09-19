@@ -258,7 +258,7 @@ export class SupabaseDbService {
         created_by_id: task.createdById || null,
         created_by_name: task.createdByName,
         priority: task.priority,
-        due_date: task.dueDate,
+        due_date: task.dueDate || null,
         status: task.status,
         progress: task.progress ?? 0,
         blocker: task.blocker || null,
@@ -271,8 +271,8 @@ export class SupabaseDbService {
         completed_at: task.completedAt || null,
         completed_by: task.completedBy || null,
         carried_forward: task.carriedForward ?? false,
-        created_at: task.createdAt,
-        updated_at: task.updatedAt,
+        created_at: task.createdAt || new Date().toISOString(),
+        updated_at: task.updatedAt || new Date().toISOString(),
       };
       const { error } = await supabase.from('tasks').upsert(payload, { onConflict: 'id' });
       if (error) {
@@ -313,7 +313,7 @@ export class SupabaseDbService {
         created_by_id: task.createdById || null,
         created_by_name: task.createdByName,
         priority: task.priority,
-        due_date: task.dueDate,
+        due_date: task.dueDate || null,
         status: task.status,
         progress: task.progress ?? 0,
         blocker: task.blocker || null,
@@ -326,8 +326,8 @@ export class SupabaseDbService {
         completed_at: task.completedAt || null,
         completed_by: task.completedBy || null,
         carried_forward: task.carriedForward ?? false,
-        created_at: task.createdAt,
-        updated_at: task.updatedAt,
+        created_at: task.createdAt || new Date().toISOString(),
+        updated_at: task.updatedAt || new Date().toISOString(),
       }));
       const { error } = await supabase.from('tasks').upsert(payloads, { onConflict: 'id' });
       if (error) {

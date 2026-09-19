@@ -37,7 +37,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
       setDescription(task.description);
       setProjectId(task.projectId || '');
       setAssignedEmployeeId(task.assignedEmployeeId);
-      setPriority(task.priority);
+      setPriority(task.priority || 'MEDIUM');
       setStatus(task.status);
       setDueDate(task.dueDate);
       setNextAction(task.nextAction);
@@ -61,16 +61,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
       setError('Task title is required.');
       return;
     }
-    if (!description.trim()) {
-      setError('Task description is required.');
-      return;
-    }
     if (!projectId.trim()) {
       setError('Project selection is required.');
-      return;
-    }
-    if (!nextAction.trim()) {
-      setError('Next action cannot be blank.');
       return;
     }
 
@@ -119,7 +111,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
+        <form onSubmit={handleSubmit} autoComplete="off" className="p-6 overflow-y-auto space-y-4 text-xs">
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -146,12 +138,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
           {/* Description */}
           <div>
             <label htmlFor="edit-task-description" className="block font-bold text-slate-700 mb-1">
-              Detailed Scope & Context <span className="text-rose-500">*</span>
+              Detailed Scope & Context <span className="text-slate-400 font-normal text-xs">(Optional)</span>
             </label>
             <textarea
               id="edit-task-description"
               rows={3}
-              required
               placeholder="Describe requirements, acceptance criteria, constraints..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -182,6 +173,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
                 users={assignees}
                 value={assignedEmployeeId}
                 onChange={setAssignedEmployeeId}
+                placeholder="Select Owner (Employee, Manager, Admin)..."
               />
             </div>
           </div>
@@ -233,12 +225,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
 
           <div>
             <label htmlFor="edit-task-next-action" className="block font-bold text-slate-700 mb-1">
-              Next Action <span className="text-rose-500">*</span>
+              Next Action <span className="text-slate-400 font-normal text-xs">(Optional)</span>
             </label>
             <input
               id="edit-task-next-action"
               type="text"
-              required
               value={nextAction}
               onChange={(e) => setNextAction(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"

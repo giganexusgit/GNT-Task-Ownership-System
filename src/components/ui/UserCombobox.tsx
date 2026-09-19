@@ -28,7 +28,7 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
   // Sync display text with selected user or search query
   useEffect(() => {
     if (selectedUser) {
-      setQuery(`${selectedUser.name} — ${selectedUser.department || selectedUser.role}`);
+      setQuery(`${selectedUser.name} (${selectedUser.role}${selectedUser.department ? ` • ${selectedUser.department}` : ''})`);
     } else if (!value) {
       setQuery('');
     }
@@ -41,7 +41,7 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
         setIsOpen(false);
         // Reset query text to selected user's label if valid
         if (selectedUser) {
-          setQuery(`${selectedUser.name} — ${selectedUser.department || selectedUser.role}`);
+          setQuery(`${selectedUser.name} (${selectedUser.role}${selectedUser.department ? ` • ${selectedUser.department}` : ''})`);
         } else if (!value) {
           setQuery('');
         }
@@ -53,7 +53,7 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
 
   // Filter active users based on query
   const filteredUsers = users.filter((u) => {
-    if (!query.trim() || (selectedUser && query === `${selectedUser.name} — ${selectedUser.department || selectedUser.role}`)) {
+    if (!query.trim() || (selectedUser && query === `${selectedUser.name} (${selectedUser.role}${selectedUser.department ? ` • ${selectedUser.department}` : ''})`)) {
       return true;
     }
     const q = query.toLowerCase().trim();
@@ -66,8 +66,19 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
 
   const handleSelect = (user: User) => {
     onChange(user.id);
-    setQuery(`${user.name} — ${user.department || user.role}`);
+    setQuery(`${user.name} (${user.role}${user.department ? ` • ${user.department}` : ''})`);
     setIsOpen(false);
+  };
+
+  const getRoleBadgeStyle = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'MANAGER':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
   };
 
   return (
@@ -76,12 +87,16 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
         <input
           id={id}
           type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           required={required}
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            if (value && e.target.value !== `${selectedUser?.name} — ${selectedUser?.department || selectedUser?.role}`) {
+            if (value && e.target.value !== `${selectedUser?.name} (${selectedUser?.role}${selectedUser?.department ? ` • ${selectedUser?.department}` : ''})`) {
               onChange(''); // clear selection if user edits text
             }
             if (!isOpen) setIsOpen(true);
@@ -125,9 +140,14 @@ export const UserCombobox: React.FC<UserComboboxProps> = ({
                         {u.initials}
                       </span>
                       <span className="font-bold text-slate-900 truncate">{u.name}</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/50 shrink-0">
-                        {u.department || u.role} ({u.role})
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 ${getRoleBadgeStyle(u.role)}`}>
+                        {u.role}
                       </span>
+                      {u.department && (
+                        <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
+                          • {u.department}
+                        </span>
+                      )}
                     </div>
 
                     {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}

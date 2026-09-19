@@ -341,7 +341,13 @@ class AuthService {
   public canEmployeeUpdate(user: User | null, task: Task): boolean {
     if (!user) return false;
     if (user.role === 'ADMIN' || user.role === 'MANAGER') return true;
-    return user.role === 'EMPLOYEE' && task.assignedEmployeeId === user.id;
+    if (user.role === 'EMPLOYEE') {
+      const matchId = task.assignedEmployeeId && task.assignedEmployeeId === user.id;
+      const matchEmail = user.email && (task.assignedEmployeeId?.toLowerCase() === user.email.toLowerCase() || task.assignedEmployeeName?.toLowerCase() === user.email.toLowerCase());
+      const matchName = user.name && task.assignedEmployeeName && task.assignedEmployeeName.toLowerCase().trim() === user.name.toLowerCase().trim();
+      return Boolean(matchId || matchEmail || matchName);
+    }
+    return false;
   }
 
   public canManageUsers(user: User | null): boolean {

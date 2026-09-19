@@ -14,6 +14,7 @@ import { NotificationCenter } from './components/notifications/NotificationCente
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { EmployeeMonthlySummaryView } from './pages/employee/EmployeeMonthlySummaryView';
 import { EmployeeProfileView } from './pages/employee/EmployeeProfileView';
+import { BrowserNotificationBanner } from './components/notifications/BrowserNotificationBanner';
 
 // Modals & Drawers
 import { TaskCreateModal } from './components/tasks/TaskCreateModal';
@@ -158,6 +159,9 @@ const MainAppLayout: React.FC = () => {
           sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-64'
         } flex flex-col min-h-screen min-w-0 transition-[padding] duration-200 ease-in-out`}
       >
+        {/* Browser Notification Banner Prompt */}
+        <BrowserNotificationBanner />
+
         {/* Topbar */}
         <Topbar
           onOpenMobileMenu={() => setMobileMenuOpen(true)}

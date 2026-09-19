@@ -59,7 +59,7 @@ class NotificationService {
 
     list.unshift(newNotif);
     storageService.setNotifications(list);
-    this.sendBrowserNotification(newNotif.title, newNotif.message);
+    this.sendBrowserNotification(newNotif.title, newNotif.message, newNotif.taskId);
     return newNotif;
   }
 
@@ -193,10 +193,52 @@ class NotificationService {
     }
   }
 
+  public getBrowserPermission(): NotificationPermission | 'unsupported' {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return window.Notification.permission;
+    }
+    return 'unsupported';
+  }
+
+  public playNotificationSound(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const now = ctx.currentTime;
+      // High pleasant chime (A5 to C#6)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.exponentialRampToValueAtTime(1108.73, now + 0.12);
+      
+      gain1.gain.setValueAtTime(0.08, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+    } catch {
+      // Audio autoplay policy or unavailable context ignored safely
+    }
+  }
+
   public async requestBrowserPermission(): Promise<NotificationPermission | 'unsupported'> {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       try {
-        return await window.Notification.requestPermission();
+        const perm = await window.Notification.requestPermission();
+        if (perm === 'granted') {
+          this.playNotificationSound();
+          this.sendBrowserNotification(
+            'GNT WorkBoard Alerts Enabled',
+            'You will now receive desktop notifications for task updates, assignments, and deadlines.'
+          );
+        }
+        return perm;
       } catch (e) {
         console.warn('Browser notification permission error:', e);
       }
@@ -204,17 +246,46 @@ class NotificationService {
     return 'unsupported';
   }
 
-  public sendBrowserNotification(title: string, message: string): void {
+  public sendBrowserNotification(title: string, message: string, taskId?: string): void {
     if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
       try {
-        new window.Notification(title, {
+        const notif = new window.Notification(title, {
           body: message,
           icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: taskId ? `gnt-task-${taskId}` : `gnt-notif-${Date.now()}`,
         });
+
+        notif.onclick = () => {
+          try {
+            window.focus();
+            if (taskId) {
+              window.location.hash = `#/tasks?taskId=${taskId}`;
+            }
+            notif.close();
+          } catch {}
+        };
+
+        this.playNotificationSound();
       } catch (e) {
         console.warn('Failed to dispatch browser notification:', e);
       }
     }
+  }
+
+  public async sendTestNotification(): Promise<boolean> {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (window.Notification.permission !== 'granted') {
+        const perm = await this.requestBrowserPermission();
+        if (perm !== 'granted') return false;
+      }
+      this.sendBrowserNotification(
+        '🔔 Test Alert: GNT WorkBoard',
+        'Site notifications are configured and active! You will receive real-time updates.'
+      );
+      return true;
+    }
+    return false;
   }
 }
 

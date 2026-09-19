@@ -87,12 +87,12 @@ class TaskService {
   public async createTask(
     data: {
       title: string;
-      description: string;
+      description?: string;
       projectId: string;
-      assignedEmployeeId: string;
+      assignedEmployeeId?: string;
       priority: TaskPriority;
-      dueDate: string;
-      nextAction: string;
+      dueDate?: string;
+      nextAction?: string;
       notes?: string;
       referenceLink?: string;
       estimatedEffort?: string;
@@ -107,10 +107,8 @@ class TaskService {
 
     // Validation
     if (!data.title.trim()) return { success: false, message: 'Task title is required.' };
-    if (!data.description.trim()) return { success: false, message: 'Task description is required.' };
     if (!data.projectId) return { success: false, message: 'Project assignment is required.' };
     if (!data.priority) return { success: false, message: 'Priority level is required.' };
-    if (!data.nextAction.trim()) return { success: false, message: 'A clear Next Action is required.' };
 
     const projects = storageService.getProjects();
     const cleanProjectInput = (data.projectId || '').trim();
@@ -146,25 +144,25 @@ class TaskService {
     const assignedUser = data.assignedEmployeeId ? users.find((u) => u.id === data.assignedEmployeeId) : undefined;
 
     const newTask: Task = {
-      id: generateId('task'),
+      id: `task-${Date.now()}`,
       title: data.title.trim(),
-      description: data.description.trim(),
+      description: data.description?.trim() || '',
       projectId: project.id,
       projectName: project.projectName,
       clientName: project.clientName,
-      assignedEmployeeId: assignedUser?.id,
-      assignedEmployeeName: assignedUser?.name,
+      assignedEmployeeId: assignedUser?.id || '',
+      assignedEmployeeName: assignedUser?.name || 'Unassigned',
       createdById: actor.id,
       createdByName: actor.name,
       priority: data.priority,
-      dueDate: data.dueDate,
+      dueDate: data.dueDate?.trim() || getLocalDateString(),
       status: 'NOT_STARTED',
       progress: 0,
-      nextAction: data.nextAction.trim(),
+      nextAction: data.nextAction?.trim() || '',
       notes: data.notes?.trim() || '',
       referenceLink: data.referenceLink?.trim() || '',
       estimatedEffort: data.estimatedEffort?.trim() || '',
-      expectedCompletionDate: data.expectedCompletionDate || data.dueDate,
+      expectedCompletionDate: data.expectedCompletionDate || data.dueDate?.trim() || getLocalDateString(),
       attachments: data.attachments || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -219,11 +217,6 @@ class TaskService {
 
     if (!authService.canEmployeeUpdate(actor, currentTask)) {
       return { success: false, message: 'Unauthorized: You can only update tasks assigned directly to you.' };
-    }
-
-    // Business Rule Check: Next Action
-    if (updates.nextAction !== undefined && !updates.nextAction.trim()) {
-      return { success: false, message: 'Next Action cannot be empty. Operational accountability requires a clear next step.' };
     }
 
     // Business Rule Check: Blocked status requires mandatory blocker reason

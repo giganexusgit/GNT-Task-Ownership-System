@@ -20,8 +20,8 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
   const [description, setDescription] = useState('');
   const [projectInput, setProjectInput] = useState('');
   const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
-  const [priority, setPriority] = useState<TaskPriority | ''>('');
-  const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState<TaskPriority | ''>('MEDIUM');
+  const [dueDate, setDueDate] = useState<string>(() => getLocalDateString());
   const [nextAction, setNextAction] = useState('');
   const [notes, setNotes] = useState('');
   const [referenceLink, setReferenceLink] = useState('');
@@ -29,6 +29,18 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Automatically ensure due date and priority default values whenever modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      if (!dueDate) {
+        setDueDate(getLocalDateString());
+      }
+      if (!priority) {
+        setPriority('MEDIUM');
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -41,10 +53,6 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
 
     if (!title.trim()) {
       setError('Task title is required.');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Task description is required.');
       return;
     }
 
@@ -81,8 +89,8 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
       setDescription('');
       setProjectInput('');
       setAssignedEmployeeId('');
-      setPriority('');
-      setDueDate('');
+      setPriority('MEDIUM');
+      setDueDate(getLocalDateString());
       setNextAction('');
       setNotes('');
       setReferenceLink('');
@@ -114,7 +122,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden space-y-4 text-xs min-w-0">
+        <form onSubmit={handleSubmit} autoComplete="off" className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden space-y-4 text-xs min-w-0">
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -141,12 +149,11 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
           {/* Description */}
           <div>
             <label htmlFor="task-description-input" className="block font-bold text-slate-700 mb-1">
-              Description & Deliverable Scope <span className="text-rose-500">*</span>
+              Description & Deliverable Scope <span className="text-slate-400 font-normal text-xs">(Optional)</span>
             </label>
             <textarea
               id="task-description-input"
               rows={3}
-              required
               placeholder="Provide exact context, expected criteria, and technical or operational constraints..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -178,7 +185,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
                 users={assignees}
                 value={assignedEmployeeId}
                 onChange={setAssignedEmployeeId}
-                placeholder="Select Owner..."
+                placeholder="Select Owner (Employee, Manager, Admin)..."
               />
             </div>
           </div>
@@ -213,10 +220,11 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          {/* Mandatory Next Action */}
+          {/* Next Action */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
             <label htmlFor="task-next-action-input" className="block font-bold text-blue-950">
-              Immediate Next Action<span className="text-rose-500">*</span> </label>
+              Immediate Next Action <span className="text-slate-500 font-normal text-xs">(Optional)</span>
+            </label>
             <p className="text-[11px] text-blue-700">
               State the exact first physical or logical step the owner must take to begin.
             </p>

@@ -55,12 +55,6 @@ export const EmployeeUpdateModal: React.FC<EmployeeUpdateModalProps> = ({
     e.preventDefault();
     setError('');
 
-    // Validation: Next action cannot be empty
-    if (!nextAction.trim()) {
-      setError('Next Action cannot be empty. Operational accountability requires a clear next step.');
-      return;
-    }
-
     // Validation: Blocker reason is mandatory if status is BLOCKED
     if (status === 'BLOCKED' && (!blocker || !blocker.trim())) {
       setError('A specific Blocker Reason is mandatory when marking a task as Blocked.');
@@ -219,18 +213,17 @@ export const EmployeeUpdateModal: React.FC<EmployeeUpdateModalProps> = ({
             </div>
           </div>
 
-          {/* Next Action (Mandatory) */}
+          {/* Next Action (Optional) */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
             <label htmlFor="update-next-action-input" className="block font-bold text-blue-950">
-              Immediate Next Action
+              Immediate Next Action <span className="text-slate-500 font-normal text-xs">(Optional)</span>
             </label>
             <p className="text-[11px] text-blue-700">
-              Always state the clear next step to be taken.
+              State the clear next step to be taken (if applicable).
             </p>
             <input
               id="update-next-action-input"
               type="text"
-
               placeholder="e.g. Run migration test in staging and verify logs"
               value={nextAction}
               onChange={(e) => setNextAction(e.target.value)}

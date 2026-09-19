@@ -285,20 +285,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Real-time Supabase postgres_changes listener with debouncing
     let syncTimeout: any = null;
+    const triggerSync = () => {
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        storageService.syncWithSupabase();
+      }, 300);
+    };
+
     const channel = supabase
-      .channel('public:db-sync')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-          storageService.syncWithSupabase();
-        }, 350);
-      })
+      .channel('public:db-sync-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, triggerSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, triggerSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, triggerSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, triggerSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, triggerSync)
       .subscribe();
+
+    // Fast sync when window gains focus or tab becomes visible
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        storageService.syncWithSupabase();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    // Periodic polling heartbeat (every 4 seconds) to guarantee multi-device state consistency
+    const pollInterval = setInterval(() => {
+      storageService.syncWithSupabase();
+    }, 4000);
 
     return () => {
       if (syncTimeout) clearTimeout(syncTimeout);
+      clearInterval(pollInterval);
       unsubscribe();
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       supabase.removeChannel(channel);
     };
   }, [refreshAllState]);
@@ -417,6 +441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await taskService.createTask(data, currentUser);
     if (res.success && res.task) {
       const created = res.task;
+      await refreshAllState();
       showToast(
         'Task Created Successfully',
         `"${created.title}" assigned to ${created.assignedEmployeeName}`,
@@ -427,6 +452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       );
     } else if (res.success) {
+      await refreshAllState();
       showToast('Task Created Successfully', res.message, 'success');
     } else {
       showToast('Task Creation Failed', res.message, 'error');
@@ -439,6 +465,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await taskService.employeeUpdateTask(taskId, updates, currentUser);
     if (res.success && res.task) {
       const updated = res.task;
+      await refreshAllState();
       showToast(
         'Task Progress Updated',
         `"${updated.title}" marked as ${updated.status.replace('_', ' ')} (${updated.progress}%)`,
@@ -449,6 +476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       );
     } else if (res.success) {
+      await refreshAllState();
       showToast('Task Updated', res.message, 'success');
     } else {
       showToast('Update Failed', res.message, 'error');
@@ -461,6 +489,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await taskService.updateTaskMetadata(taskId, updates, currentUser);
     if (res.success && res.task) {
       const updated = res.task;
+      await refreshAllState();
       showToast(
         'Task Updated Successfully',
         `Saved modifications to "${updated.title}"`,
@@ -471,6 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       );
     } else if (res.success) {
+      await refreshAllState();
       showToast('Task Configured', res.message, 'success');
     } else {
       showToast('Update Failed', res.message, 'error');

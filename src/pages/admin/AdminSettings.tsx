@@ -12,12 +12,35 @@ import {
   AlertCircle,
   FileCode,
   RefreshCw,
+  Bell,
+  Volume2,
 } from 'lucide-react';
+import { notificationService } from '../../services/notificationService';
 
 export const AdminSettings: React.FC = () => {
   const { users, tasks, projects, activities, notifications, resetToDemoData, showToast } = useApp();
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState('');
+  const [browserPerm, setBrowserPerm] = useState<NotificationPermission | 'unsupported'>(() =>
+    notificationService.getBrowserPermission()
+  );
+
+  const handleEnableNotifications = async () => {
+    const res = await notificationService.requestBrowserPermission();
+    setBrowserPerm(res);
+    if (res === 'granted') {
+      showToast('Notifications Active', 'Site desktop notifications enabled!', 'success');
+    } else if (res === 'denied') {
+      showToast('Notifications Blocked', 'Allow notifications in your browser address bar site settings.', 'info');
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    const ok = await notificationService.sendTestNotification();
+    if (ok) {
+      showToast('Test Sent', 'Desktop test alert dispatched with audio chime.', 'success');
+    }
+  };
 
   const handleExportJson = () => {
     const backupStr = storageService.exportFullBackup();
@@ -85,6 +108,74 @@ export const AdminSettings: React.FC = () => {
             <span className="text-[10px] uppercase font-bold text-slate-400">Notifications</span>
             <p className="text-xl font-extrabold text-slate-900 mt-1">{notifications.length}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Browser & Site Notifications */}
+      <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${browserPerm === 'granted' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+              <Volume2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">Browser & Site Notifications</h3>
+                {browserPerm === 'granted' && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    Granted & Active
+                  </span>
+                )}
+                {browserPerm === 'default' && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                    Permission Needed
+                  </span>
+                )}
+                {browserPerm === 'denied' && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                    Blocked by Browser
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Native OS notifications, tab badges, and Web Audio synthesizers for real-time task alerts
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {browserPerm !== 'granted' ? (
+              <button
+                type="button"
+                id="btn-admin-enable-notifs"
+                onClick={handleEnableNotifications}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Enable Notifications</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                id="btn-admin-test-notifs"
+                onClick={handleSendTestNotification}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Volume2 className="w-3.5 h-3.5 text-slate-500" />
+                <span>Send Test Alert</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
+          <p className="font-semibold text-slate-800">Site Notification Features:</p>
+          <ul className="list-disc list-inside text-slate-500 text-[11px] space-y-0.5">
+            <li>Instant desktop banner when tasks are assigned to owners</li>
+            <li>Critical escalation alerts when blockers are reported</li>
+            <li>Automatic deadline and overdue deliverable warnings</li>
+            <li>Notification clicking brings your browser window into focus directly at the relevant deliverable</li>
+          </ul>
         </div>
       </div>
 
