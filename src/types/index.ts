@@ -168,6 +168,8 @@ export interface DetailedTaskReportRow {
   priority: TaskPriority;
   isOnTime: boolean;
   isOverdue: boolean;
+  wasCompletedLate: boolean;
+  delayDays: number;
   isCarriedForward: boolean;
   nextAction: string;
 }

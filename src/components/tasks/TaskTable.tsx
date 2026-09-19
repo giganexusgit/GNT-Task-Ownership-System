@@ -458,7 +458,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   <th className="py-3 px-4 font-semibold">Task & Project</th>
                   <th className="py-3 px-3 font-semibold">Owner</th>
                   <th className="py-3 px-3 font-semibold">Priority</th>
-                  <th className="py-3 px-3 font-semibold">Assigned Date</th>
+                  <th className="py-3 px-3 font-semibold">Assigned Date & Time</th>
                   <th className="py-3 px-3 font-semibold">Deadline</th>
                   <th className="py-3 px-3 font-semibold">Status</th>
                   <th className="py-3 px-3 font-semibold">Progress</th>
@@ -484,6 +484,26 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         .join('')
                         .slice(0, 2)
                     : '--';
+
+                  let delayText = 'Delayed';
+                  if (wasCompletedOverdue && task.completedAt) {
+                    const d1 = new Date(task.dueDate);
+                    const d2 = new Date(task.completedAt.split('T')[0]);
+                    const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                      delayText = `Delayed by ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+                    }
+                  }
+
+                  let overdueText = 'Overdue';
+                  if (isOverdue) {
+                    const d1 = new Date(task.dueDate);
+                    const d2 = new Date(todayStr);
+                    const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                      overdueText = `Overdue by ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+                    }
+                  }
 
                   return (
                     <tr
@@ -535,11 +555,20 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         <PriorityBadge priority={task.priority} />
                       </td>
 
-                      {/* Assigned Date */}
+                      {/* Assigned Date & Time */}
                       <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-medium text-slate-600">
-                          {task.createdAt ? task.createdAt.split('T')[0] : 'N/A'}
-                        </span>
+                        {task.createdAt ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-600">
+                              {task.createdAt.split('T')[0]}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">
+                              {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-medium text-slate-600">N/A</span>
+                        )}
                       </td>
 
                       {/* Due Date */}
@@ -558,7 +587,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                           </span>
                           {isOverdue && (
                             <span className="text-[10px] font-bold text-rose-600 uppercase">
-                              Overdue
+                              {overdueText}
                             </span>
                           )}
                           {isDueToday && (
@@ -568,7 +597,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                           )}
                           {wasCompletedOverdue && (
                             <span className="text-[9px] font-bold text-amber-800 uppercase bg-amber-100/80 px-1 py-0.2 rounded border border-amber-200/70 max-w-fit mt-0.5" title="Task was completed past original deadline">
-                              Delayed
+                              {delayText}
                             </span>
                           )}
                         </div>

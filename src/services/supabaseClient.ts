@@ -1,10 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-export const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || 'https://rshefuocexrhiklqqfkx.supabase.co';
-export const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_xJu9t38fPE6YxIKRkC0v5w_p03V1MtY';
+// ⚠️ SECURITY: Never hardcode credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = Boolean(
   SUPABASE_URL &&
@@ -125,6 +123,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   attachments JSONB DEFAULT '[]'::jsonb,
   completed_at TIMESTAMPTZ,
   completed_by TEXT,
+  was_overdue BOOLEAN DEFAULT false,
   carried_forward BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -156,27 +155,32 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Enable Row Level Security (RLS) & Idempotent Access Policies for Web Client
+-- Enable Row Level Security
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow public access users" ON public.users;
-CREATE POLICY "Allow public access users" ON public.users FOR ALL USING (true) WITH CHECK (true);
+-- RLS Policies: Restrict to authenticated users only
+-- NOTE: For stronger security, replace these with user-specific policies
+DROP POLICY IF EXISTS "Allow authenticated access users" ON public.users;
+CREATE POLICY "Allow authenticated access users" ON public.users FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow public access projects" ON public.projects;
-CREATE POLICY "Allow public access projects" ON public.projects FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated access projects" ON public.projects;
+CREATE POLICY "Allow authenticated access projects" ON public.projects FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow public access tasks" ON public.tasks;
-CREATE POLICY "Allow public access tasks" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated access tasks" ON public.tasks;
+CREATE POLICY "Allow authenticated access tasks" ON public.tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow public access activities" ON public.activities;
-CREATE POLICY "Allow public access activities" ON public.activities FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated access activities" ON public.activities;
+CREATE POLICY "Allow authenticated access activities" ON public.activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow public access notifications" ON public.notifications;
-CREATE POLICY "Allow public access notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated access notifications" ON public.notifications;
+CREATE POLICY "Allow authenticated access notifications" ON public.notifications FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Migration: Add was_overdue column if it does not exist yet
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS was_overdue BOOLEAN DEFAULT false;
 
 -- Enable Realtime for all tables (Idempotent)
 DO $$
